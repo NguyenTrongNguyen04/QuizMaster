@@ -6,11 +6,11 @@ import Flashcard from './components/Flashcard';
 import Quiz from './components/Quiz';
 import Results from './components/Results';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Question, FlashcardProgress, QuizResult } from './types';
+import { Subject, FlashcardProgress, QuizResult } from './types';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
-  const [questions, setQuestions] = useLocalStorage<Question[]>('questions', []);
+  const [subjects, setSubjects] = useLocalStorage<Subject[]>('subjects', []);
   const [flashcardProgress, setFlashcardProgress] = useLocalStorage<FlashcardProgress[]>('flashcard-progress', []);
   const [quizResults, setQuizResults] = useLocalStorage<QuizResult[]>('quiz-results', []);
 
@@ -18,8 +18,8 @@ function App() {
     setCurrentPage(page);
   };
 
-  const handleQuestionsChange = (newQuestions: Question[]) => {
-    setQuestions(newQuestions);
+  const handleSubjectsChange = (newSubjects: Subject[]) => {
+    setSubjects(newSubjects);
   };
 
   const handleProgressChange = (newProgress: FlashcardProgress[]) => {
@@ -34,27 +34,34 @@ function App() {
     setQuizResults(newResults);
   };
 
+  // Tính tổng số câu hỏi từ tất cả các môn học
+  const totalQuestions = subjects.reduce((total, subject) => {
+    return total + subject.exams.reduce((examTotal, exam) => {
+      return examTotal + exam.questions.length;
+    }, 0);
+  }, 0);
+
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'home':
         return (
           <Home 
             onNavigate={handlePageChange}
-            questionsCount={questions.length}
+            questionsCount={totalQuestions}
             resultsCount={quizResults.length}
           />
         );
       case 'manage':
         return (
           <QuestionManager 
-            questions={questions} 
-            onQuestionsChange={handleQuestionsChange}
+            subjects={subjects} 
+            onSubjectsChange={handleSubjectsChange}
           />
         );
       case 'flashcard':
         return (
           <Flashcard 
-            questions={questions}
+            subjects={subjects}
             progress={flashcardProgress}
             onProgressChange={handleProgressChange}
           />
@@ -62,7 +69,7 @@ function App() {
       case 'quiz':
         return (
           <Quiz 
-            questions={questions}
+            subjects={subjects}
             onResultSave={handleResultSave}
           />
         );
@@ -71,13 +78,14 @@ function App() {
           <Results 
             results={quizResults}
             onResultsChange={handleResultsChange}
+            subjects={subjects}
           />
         );
       default:
         return (
           <Home 
             onNavigate={handlePageChange}
-            questionsCount={questions.length}
+            questionsCount={totalQuestions}
             resultsCount={quizResults.length}
           />
         );

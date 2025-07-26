@@ -1,13 +1,14 @@
 import React from 'react';
-import { Trophy, Calendar, Clock, Target, TrendingUp, Trash2 } from 'lucide-react';
-import { QuizResult } from '../types';
+import { Trophy, Calendar, Clock, Target, TrendingUp, Trash2, BookOpen, FileText } from 'lucide-react';
+import { QuizResult, Subject } from '../types';
 
 interface ResultsProps {
   results: QuizResult[];
   onResultsChange: (results: QuizResult[]) => void;
+  subjects?: Subject[]; // Thêm subjects để hiển thị tên môn học và đề
 }
 
-const Results: React.FC<ResultsProps> = ({ results, onResultsChange }) => {
+const Results: React.FC<ResultsProps> = ({ results, onResultsChange, subjects = [] }) => {
   const deleteResult = (id: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa kết quả này?')) {
       onResultsChange(results.filter(r => r.id !== id));
@@ -34,6 +35,15 @@ const Results: React.FC<ResultsProps> = ({ results, onResultsChange }) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getSubjectAndExamName = (result: QuizResult) => {
+    const subject = subjects.find(s => s.id === result.subjectId);
+    const exam = subject?.exams.find(e => e.id === result.examId);
+    return {
+      subjectName: subject?.name || 'Môn học không xác định',
+      examName: exam?.name || 'Đề không xác định'
+    };
   };
 
   if (results.length === 0) {
@@ -125,6 +135,7 @@ const Results: React.FC<ResultsProps> = ({ results, onResultsChange }) => {
           <div className="space-y-4">
             {recentResults.map((result) => {
               const scorePercentage = (result.score / result.totalQuestions) * 100;
+              const { subjectName, examName } = getSubjectAndExamName(result);
               return (
                 <div key={result.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
                   <div className="flex justify-between items-start">
@@ -144,6 +155,14 @@ const Results: React.FC<ResultsProps> = ({ results, onResultsChange }) => {
                             {result.score}/{result.totalQuestions} câu đúng
                           </p>
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <div className="flex items-center space-x-1">
+                              <BookOpen className="h-4 w-4" />
+                              <span>{subjectName}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <FileText className="h-4 w-4" />
+                              <span>{examName}</span>
+                            </div>
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4" />
                               <span>{formatDate(result.date)}</span>

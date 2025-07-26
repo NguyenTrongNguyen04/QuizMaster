@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, AlertCircle, RotateCcw } from 'lucide-react';
-import { Question, QuizResult } from '../types';
+import { Clock, CheckCircle, AlertCircle, RotateCcw, BookOpen, FileText } from 'lucide-react';
+import { Subject, Question, QuizResult } from '../types';
 
 interface QuizProps {
-  questions: Question[];
+  subjects: Subject[];
   onResultSave: (result: QuizResult) => void;
 }
 
-const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
+const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
@@ -16,12 +16,18 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isFinished, setIsFinished] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [isSelecting, setIsSelecting] = useState(true);
 
-  const QUIZ_SIZE = Math.min(10, questions.length);
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+  const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
+
+  const QUIZ_SIZE = Math.min(10, selectedExam?.questions.length || 0);
   const TIME_LIMIT = 30 * 60; // 30 minutes in seconds
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number;
     if (isStarted && !isFinished && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -37,12 +43,12 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
   }, [isStarted, isFinished, timeLeft]);
 
   const startQuiz = () => {
-    if (questions.length === 0) {
+    if (!selectedExam || selectedExam.questions.length === 0) {
       alert('Không có câu hỏi nào để tạo quiz');
       return;
     }
 
-    const shuffled = [...questions].sort(() => Math.random() - 0.5).slice(0, QUIZ_SIZE);
+    const shuffled = [...selectedExam.questions].sort(() => Math.random() - 0.5).slice(0, QUIZ_SIZE);
     setQuizQuestions(shuffled);
     setUserAnswers(new Array(shuffled.length).fill(-1));
     setCurrentQuestionIndex(0);
@@ -64,7 +70,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
   };
 
   const handleFinishQuiz = () => {
-    if (!startTime) return;
+    if (!startTime || !selectedSubject || !selectedExam) return;
 
     const endTime = new Date();
     const timeSpent = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
@@ -79,6 +85,8 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
     const quizResult: QuizResult = {
       id: Date.now().toString(),
       date: endTime,
+      subjectId: selectedSubject.id,
+      examId: selectedExam.id,
       questions: quizQuestions,
       userAnswers,
       score: correctCount,
@@ -102,18 +110,119 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
     setResult(null);
   };
 
+  const handleBackToSelection = () => {
+    setIsSelecting(true);
+    setSelectedSubjectId(null);
+    setSelectedExamId(null);
+    resetQuiz();
+  };
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  if (questions.length === 0) {
+  // Tính tổng số câu hỏi từ tất cả các môn học
+  const totalQuestions = subjects.reduce((total, subject) => {
+    return total + subject.exams.reduce((examTotal, exam) => {
+      return examTotal + exam.questions.length;
+    }, 0);
+  }, 0);
+
+  if (totalQuestions === 0) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-xl shadow-lg p-12 text-center">
           <p className="text-gray-500 text-lg">Chưa có câu hỏi nào cho quiz</p>
           <p className="text-gray-400 text-sm mt-2">Vui lòng thêm câu hỏi trong phần Quản lý</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSelecting) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-xl shadow-lg">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-900">Chọn môn học và đề để làm quiz</h2>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Chọn môn học */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <BookOpen className="h-5 w-5 mr-2" />
+                  Chọn môn học
+                </h3>
+                <div className="space-y-2">
+                  {subjects.map((subject) => (
+                    <div
+                      key={subject.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors duration-200 ${
+                        selectedSubjectId === subject.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => setSelectedSubjectId(subject.id)}
+                    >
+                      <div className="font-medium text-gray-900">{subject.name}</div>
+                      <div className="text-sm text-gray-500">{subject.code}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {subject.exams.length} đề thi
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chọn đề thi */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Chọn đề thi
+                </h3>
+                {selectedSubject ? (
+                  <div className="space-y-2">
+                    {selectedSubject.exams.map((exam) => (
+                      <div
+                        key={exam.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors duration-200 ${
+                          selectedExamId === exam.id
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedExamId(exam.id)}
+                      >
+                        <div className="font-medium text-gray-900">{exam.name}</div>
+                        <div className="text-sm text-gray-500">{exam.code}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {exam.questions.length} câu hỏi
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Vui lòng chọn môn học trước
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {selectedExam && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setIsSelecting(false)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200"
+                >
+                  Bắt đầu quiz với {selectedExam.name}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -125,6 +234,15 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Bài kiểm tra trắc nghiệm</h2>
+            
+            {/* Subject and Exam info */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="text-lg text-gray-700">
+                <span className="font-medium">{selectedSubject!.name}</span> - 
+                <span className="font-medium ml-1">{selectedExam!.name}</span>
+              </div>
+            </div>
+            
             <div className="bg-blue-50 rounded-lg p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div>
@@ -136,7 +254,7 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
                   <p className="text-sm text-gray-600">Thời gian</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-600">{questions.length}</p>
+                  <p className="text-2xl font-bold text-blue-600">{selectedExam!.questions.length}</p>
                   <p className="text-sm text-gray-600">Tổng câu hỏi có sẵn</p>
                 </div>
               </div>
@@ -264,6 +382,14 @@ const Quiz: React.FC<QuizProps> = ({ questions, onResultSave }) => {
                 <Clock className="h-5 w-5" />
                 <span className="font-mono text-lg">{formatTime(timeLeft)}</span>
               </div>
+            </div>
+          </div>
+          
+          {/* Subject and Exam info */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{selectedSubject!.name}</span> - 
+              <span className="font-medium ml-1">{selectedExam!.name}</span>
             </div>
           </div>
           
