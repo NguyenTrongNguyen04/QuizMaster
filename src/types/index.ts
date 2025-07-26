@@ -26,6 +26,7 @@ export interface FlashcardProgress {
   known: boolean;
   reviewCount: number;
   lastReviewed: Date;
+  bookmarked?: boolean;  // Đánh dấu flashcard đã đọc
 }
 
 export interface QuizResult {
