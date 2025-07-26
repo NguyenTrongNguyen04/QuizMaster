@@ -267,24 +267,28 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
 
         {/* Flashcard */}
         <div className="p-6">
-          <div className="relative h-96 mx-auto max-w-2xl">
-            <div 
-              className={`absolute inset-0 w-full h-full cursor-pointer transition-transform duration-700 transform-gpu ${
-                isFlipped ? 'rotate-y-180' : ''
-              }`}
+          <div className="relative h-96 mx-auto max-w-2xl flashcard-3d">
+            <div
+              className={`flashcard-inner${isFlipped ? ' flipped' : ''} cursor-pointer`}
               onClick={() => setIsFlipped(!isFlipped)}
             >
               {/* Front of card */}
-              <div className={`absolute inset-0 w-full h-full rounded-xl shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center p-8 backface-hidden ${isFlipped ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="flashcard-face front rounded-xl shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center p-8">
                 <div className="text-center">
                   <h3 className="text-xl font-medium mb-4">Câu hỏi:</h3>
-                  <p className="text-lg leading-relaxed">{currentQuestion.question}</p>
+                  <p className="text-lg leading-relaxed mb-4">{currentQuestion.question}</p>
+                  <div className="space-y-2 mb-2">
+                    {currentQuestion.options.map((option, idx) => (
+                      <div key={idx} className="text-base text-left">
+                        <span className="font-semibold">{String.fromCharCode(65 + idx)}.</span> {option}
+                      </div>
+                    ))}
+                  </div>
                   <p className="text-sm opacity-75 mt-4">Nhấn để xem đáp án</p>
                 </div>
               </div>
-
               {/* Back of card */}
-              <div className={`absolute inset-0 w-full h-full rounded-xl shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center p-8 backface-hidden rotate-y-180 ${isFlipped ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="flashcard-face back rounded-xl shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center p-8">
                 <div className="text-center">
                   <h3 className="text-xl font-medium mb-4">Đáp án đúng:</h3>
                   <p className="text-lg font-medium mb-2">

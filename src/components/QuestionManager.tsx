@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit3, Save, X, BookOpen, FileText } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, BookOpen, FileText, Upload } from 'lucide-react';
 import { Subject, Exam, Question } from '../types';
 
 interface QuestionManagerProps {
@@ -36,6 +36,11 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
     correctAnswer: 0,
   });
 
+  const [showBatchInput, setShowBatchInput] = useState(false);
+  const [batchInputText, setBatchInputText] = useState('');
+  const [batchParsedQuestions, setBatchParsedQuestions] = useState<Question[]>([]);
+  const [batchParseError, setBatchParseError] = useState<string | null>(null);
+
   const resetSubjectForm = () => {
     setSubjectFormData({ code: '', name: '' });
   };
@@ -50,6 +55,33 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
       options: ['', '', '', ''],
       correctAnswer: 0,
     });
+  };
+
+  // Hàm parse nội dung nhập nhanh
+  const parseBatchQuestions = (text: string, examId: string): Question[] => {
+    // Tách từng block câu hỏi
+    const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+    const questions: Question[] = [];
+    for (const block of blocks) {
+      // Tìm dòng đầu là câu hỏi
+      const lines = block.split(/\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 6) continue; // 1 câu hỏi + 4 đáp án + đáp án đúng
+      const questionText = lines[0].replace(/^\d+\.?\s*/, '');
+      const options = [0,1,2,3].map(i => (lines[i+1] || '').replace(/^[A-Da-d]\.?\s*/, ''));
+      const answerLine = lines.find(l => /Đáp án\s*[:：]/i.test(l)) || lines[5];
+      const match = answerLine.match(/Đáp án\s*[:：]\s*([A-Da-d])/i);
+      if (!match) continue;
+      const correctAnswer = 'ABCD'.indexOf(match[1].toUpperCase());
+      if (correctAnswer === -1) continue;
+      questions.push({
+        id: Date.now().toString() + Math.random(),
+        question: questionText,
+        options,
+        correctAnswer,
+        examId,
+      });
+    }
+    return questions;
   };
 
   // Subject handlers
@@ -480,6 +512,115 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
             
             {selectedExam && (
               <>
+                {/* Nhập nhanh nhiều câu hỏi */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowBatchInput(true)}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors duration-200"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>Nhập nhanh nhiều câu hỏi</span>
+                  </button>
+                </div>
+                {showBatchInput && (
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-orange-200">
+                    <h4 className="font-semibold text-orange-700 mb-2">Nhập nhanh nhiều câu hỏi cho đề này</h4>
+                    <p className="text-xs text-gray-500 mb-2">Định dạng mẫu:<br />
+                      <span className="font-mono whitespace-pre-line">
+                        1. Câu hỏi?
+                        A. Đáp án 1
+                        B. Đáp án 2
+                        C. Đáp án 3
+                        D. Đáp án 4
+                        Đáp án: A
+                        (Dòng trống để phân cách các câu)
+                      </span>
+                    </p>
+                    <textarea
+                      className="w-full p-2 border border-gray-300 rounded mb-2 text-sm font-mono"
+                      rows={10}
+                      value={batchInputText}
+                      onChange={e => setBatchInputText(e.target.value)}
+                      placeholder={
+                        '1. Thủ đô của Việt Nam là?\nA. Hà Nội\nB. TP.HCM\nC. Đà Nẵng\nD. Hải Phòng\nĐáp án: A\n\n2. 2 + 2 = ?\nA. 3\nB. 4\nC. 5\nD. 6\nĐáp án: B'
+                      }
+                    />
+                    <div className="flex space-x-2 mb-2">
+                      <button
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                        onClick={() => {
+                          try {
+                            const parsed = parseBatchQuestions(batchInputText, selectedExam.id);
+                            if (parsed.length === 0) {
+                              setBatchParseError('Không phát hiện được câu hỏi nào hợp lệ.');
+                              setBatchParsedQuestions([]);
+                            } else {
+                              setBatchParsedQuestions(parsed);
+                              setBatchParseError(null);
+                            }
+                          } catch (e) {
+                            setBatchParseError('Lỗi khi phân tích nội dung.');
+                            setBatchParsedQuestions([]);
+                          }
+                        }}
+                      >Phân tích/Preview</button>
+                      <button
+                        className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded"
+                        onClick={() => {
+                          setShowBatchInput(false);
+                          setBatchInputText('');
+                          setBatchParsedQuestions([]);
+                          setBatchParseError(null);
+                        }}
+                      >Đóng</button>
+                    </div>
+                    {batchParseError && <div className="text-red-600 text-sm mb-2">{batchParseError}</div>}
+                    {batchParsedQuestions.length > 0 && (
+                      <div className="mb-2">
+                        <div className="text-green-700 text-sm font-semibold mb-1">Preview ({batchParsedQuestions.length} câu):</div>
+                        <ul className="text-xs text-gray-700 space-y-1 max-h-40 overflow-y-auto">
+                          {batchParsedQuestions.map((q, idx) => (
+                            <li key={q.id} className="border-b border-dashed border-gray-300 pb-1">
+                              <span className="font-bold">{idx + 1}.</span> {q.question}
+                              <ul className="ml-4">
+                                {q.options.map((opt, i) => (
+                                  <li key={i} className={q.correctAnswer === i ? 'text-green-700 font-semibold' : ''}>
+                                    {String.fromCharCode(65 + i)}. {opt} {q.correctAnswer === i && <span>(Đúng)</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            </li>
+                          ))}
+                        </ul>
+                        <button
+                          className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                          onClick={() => {
+                            // Lưu tất cả câu hỏi vào đề
+                            const updatedSubjects = subjects.map(s => {
+                              if (!selectedSubject || s.id !== selectedSubject.id) return s;
+                              return {
+                                ...s,
+                                exams: s.exams.map(e => {
+                                  if (e.id !== selectedExam.id) return e;
+                                  return {
+                                    ...e,
+                                    questions: [...e.questions, ...batchParsedQuestions],
+                                  };
+                                })
+                              };
+                            });
+                            onSubjectsChange(updatedSubjects);
+                            setShowBatchInput(false);
+                            setBatchInputText('');
+                            setBatchParsedQuestions([]);
+                            setBatchParseError(null);
+                          }}
+                        >Lưu tất cả vào đề</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {isAddingQuestion && (
                   <div className="bg-gray-50 rounded-lg p-4 mb-4">
                     <form onSubmit={handleQuestionSubmit} className="space-y-3">
