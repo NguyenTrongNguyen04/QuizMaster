@@ -58,7 +58,13 @@ export const loadPublicSubjects = async () => {
   try {
     const snapshot = await get(ref(database, 'public/subjects'));
     if (snapshot.exists()) {
-      return Object.values(snapshot.val());
+      // Ensure exams is always an array
+      return Object.values(snapshot.val()).map((s: any) => ({
+        ...s,
+        exams: Array.isArray(s.exams)
+          ? s.exams
+          : (s.exams ? Object.values(s.exams) : []),
+      }));
     }
     return [];
   } catch (error) {
@@ -72,7 +78,13 @@ export const subscribeToPublicSubjects = (callback: (subjects: any[]) => void) =
   
   onValue(subjectsRef, (snapshot) => {
     if (snapshot.exists()) {
-      const subjects = Object.values(snapshot.val());
+      // Ensure exams is always an array
+      const subjects = Object.values(snapshot.val()).map((s: any) => ({
+        ...s,
+        exams: Array.isArray(s.exams)
+          ? s.exams
+          : (s.exams ? Object.values(s.exams) : []),
+      }));
       callback(subjects);
     } else {
       callback([]);
