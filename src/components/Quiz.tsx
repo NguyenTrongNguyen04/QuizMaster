@@ -23,11 +23,11 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
 
-  const QUIZ_SIZE = Math.min(10, selectedExam?.questions.length || 0);
+  const QUIZ_SIZE = Math.min(10, selectedExam?.questions?.length || 0);
   const TIME_LIMIT = 30 * 60; // 30 minutes in seconds
 
   useEffect(() => {
-    let interval: number;
+    let interval: NodeJS.Timeout;
     if (isStarted && !isFinished && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -43,7 +43,7 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   }, [isStarted, isFinished, timeLeft]);
 
   const startQuiz = () => {
-    if (!selectedExam || selectedExam.questions.length === 0) {
+    if (!selectedExam || !selectedExam.questions || selectedExam.questions.length === 0) {
       alert('Không có câu hỏi nào để tạo quiz');
       return;
     }

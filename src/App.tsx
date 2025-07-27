@@ -116,8 +116,8 @@ function App() {
 
   // Tính tổng số câu hỏi từ tất cả các môn học
   const totalQuestions = (publicSubjects || []).reduce((total, subject) => {
-    return total + subject.exams.reduce((examTotal, exam) => {
-      return examTotal + exam.questions.length;
+    return total + (subject.exams || []).reduce((examTotal, exam) => {
+      return examTotal + (exam.questions || []).length;
     }, 0);
   }, 0);
 

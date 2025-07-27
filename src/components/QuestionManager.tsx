@@ -481,7 +481,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
                             <div className="font-medium text-gray-900">{exam.name}</div>
                             <div className="text-sm text-gray-500">{exam.code}</div>
                             <div className="text-xs text-gray-400 mt-1">
-                              {exam.questions.length} câu hỏi
+                              {(exam.questions || []).length} câu hỏi
                             </div>
                           </div>
                           <div className="flex space-x-1 ml-2">

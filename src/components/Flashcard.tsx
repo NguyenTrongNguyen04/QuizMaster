@@ -123,8 +123,8 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
 
   // Tính tổng số câu hỏi từ tất cả các môn học
   const totalQuestions = subjects.reduce((total, subject) => {
-    return total + subject.exams.reduce((examTotal, exam) => {
-      return examTotal + exam.questions.length;
+    return total + (subject.exams || []).reduce((examTotal, exam) => {
+      return examTotal + (exam.questions || []).length;
     }, 0);
   }, 0);
 

@@ -58,12 +58,18 @@ export const loadPublicSubjects = async () => {
   try {
     const snapshot = await get(ref(database, 'public/subjects'));
     if (snapshot.exists()) {
-      // Ensure exams is always an array
+      // Ensure exams and questions are always arrays
       return Object.values(snapshot.val()).map((s: any) => ({
         ...s,
         exams: Array.isArray(s.exams)
-          ? s.exams
-          : (s.exams ? Object.values(s.exams) : []),
+          ? s.exams.map((exam: any) => ({
+              ...exam,
+              questions: Array.isArray(exam.questions) ? exam.questions : []
+            }))
+          : (s.exams ? Object.values(s.exams).map((exam: any) => ({
+              ...exam,
+              questions: Array.isArray(exam.questions) ? exam.questions : []
+            })) : []),
       }));
     }
     return [];
@@ -78,12 +84,18 @@ export const subscribeToPublicSubjects = (callback: (subjects: any[]) => void) =
   
   onValue(subjectsRef, (snapshot) => {
     if (snapshot.exists()) {
-      // Ensure exams is always an array
+      // Ensure exams and questions are always arrays
       const subjects = Object.values(snapshot.val()).map((s: any) => ({
         ...s,
         exams: Array.isArray(s.exams)
-          ? s.exams
-          : (s.exams ? Object.values(s.exams) : []),
+          ? s.exams.map((exam: any) => ({
+              ...exam,
+              questions: Array.isArray(exam.questions) ? exam.questions : []
+            }))
+          : (s.exams ? Object.values(s.exams).map((exam: any) => ({
+              ...exam,
+              questions: Array.isArray(exam.questions) ? exam.questions : []
+            })) : []),
       }));
       callback(subjects);
     } else {
