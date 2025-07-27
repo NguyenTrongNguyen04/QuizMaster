@@ -2,16 +2,16 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { getDatabase, ref, set, get, onValue, off } from 'firebase/database';
 
-// Firebase configuration
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCsD3G9KgYGNWf7dVzHWRccmO_DyU77umw",
-  authDomain: "quizmaster-fptu.firebaseapp.com",
-  databaseURL: "https://quizmaster-fptu-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "quizmaster-fptu",
-  storageBucket: "quizmaster-fptu.firebasestorage.app",
-  messagingSenderId: "350242209338",
-  appId: "1:350242209338:web:e1d75edf4587962302ff03",
-  measurementId: "G-CHT269J2FW"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
