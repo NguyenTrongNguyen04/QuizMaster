@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Brain, Trophy, Settings, Home } from 'lucide-react';
+import { BookOpen, Brain, Trophy, Settings, Home, Cloud } from 'lucide-react';
 
 interface NavigationProps {
   currentPage: string;
@@ -13,6 +13,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange }) =>
     { id: 'flashcard', label: 'Flashcard', icon: BookOpen },
     { id: 'quiz', label: 'Quiz', icon: Brain },
     { id: 'results', label: 'Kết quả', icon: Trophy },
+    { id: 'sync', label: 'Đồng bộ', icon: Cloud },
   ];
 
   return (
