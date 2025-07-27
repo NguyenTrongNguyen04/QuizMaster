@@ -19,11 +19,15 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(true);
+  const [quizMode, setQuizMode] = useState<'full' | 'limited'>('full');
+  const [customQuizSize, setCustomQuizSize] = useState(10);
 
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
 
-  const QUIZ_SIZE = Math.min(10, selectedExam?.questions?.length || 0);
+  const QUIZ_SIZE = quizMode === 'full' 
+    ? (selectedExam?.questions?.length || 0)
+    : Math.min(customQuizSize, selectedExam?.questions?.length || 0);
   const TIME_LIMIT = 30 * 60; // 30 minutes in seconds
 
   useEffect(() => {
@@ -48,9 +52,17 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
       return;
     }
 
-    const shuffled = [...selectedExam.questions].sort(() => Math.random() - 0.5).slice(0, QUIZ_SIZE);
-    setQuizQuestions(shuffled);
-    setUserAnswers(new Array(shuffled.length).fill(-1));
+    let questionsToUse: Question[];
+    if (quizMode === 'full') {
+      // Use all questions for full exam
+      questionsToUse = [...selectedExam.questions];
+    } else {
+      // Use limited number of questions, shuffled
+      questionsToUse = [...selectedExam.questions].sort(() => Math.random() - 0.5).slice(0, QUIZ_SIZE);
+    }
+
+    setQuizQuestions(questionsToUse);
+    setUserAnswers(new Array(questionsToUse.length).fill(-1));
     setCurrentQuestionIndex(0);
     setTimeLeft(TIME_LIMIT);
     setStartTime(new Date());
@@ -240,6 +252,56 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
               <div className="text-lg text-gray-700">
                 <span className="font-medium">{selectedSubject!.name}</span> - 
                 <span className="font-medium ml-1">{selectedExam!.name}</span>
+              </div>
+            </div>
+            
+            {/* Quiz Mode Selection */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Chọn chế độ làm bài:</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="text-center">
+                  <label className="flex items-center justify-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      value="full"
+                      checked={quizMode === 'full'}
+                      onChange={() => setQuizMode('full')}
+                      className="text-blue-600"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">Làm toàn bộ đề</div>
+                      <div className="text-sm text-gray-600">{selectedExam!.questions.length} câu hỏi</div>
+                    </div>
+                  </label>
+                </div>
+                <div className="text-center">
+                  <label className="flex items-center justify-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      value="limited"
+                      checked={quizMode === 'limited'}
+                      onChange={() => setQuizMode('limited')}
+                      className="text-blue-600"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">Làm một phần</div>
+                      <div className="text-sm text-gray-600">
+                        <input
+                          type="number"
+                          min="1"
+                          max={selectedExam!.questions.length}
+                          value={customQuizSize}
+                          onChange={(e) => setCustomQuizSize(parseInt(e.target.value) || 10)}
+                          className="w-16 p-1 border border-gray-300 rounded text-center text-sm"
+                          disabled={quizMode !== 'limited'}
+                        />
+                        {' '}câu hỏi
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
             
