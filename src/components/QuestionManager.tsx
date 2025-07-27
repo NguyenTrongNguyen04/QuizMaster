@@ -277,7 +277,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
     <div className="max-w-7xl mx-auto p-6">
       <div className="bg-white rounded-xl shadow-lg">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Quản lý câu hỏi</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Quản lý câu hỏi</h2>
           <p className="text-gray-600 mt-2">Thêm và quản lý môn học, đề thi và câu hỏi</p>
         </div>
 
@@ -406,14 +406,14 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
                     Đề thi
                   </h3>
                   {selectedSubjectId && (
-                    <button
+                <button
                       onClick={() => setIsAddingExam(true)}
                       className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
                 {selectedSubjectId && isAddingExam && (
                   <div className="bg-gray-50 rounded-lg p-4">
@@ -442,8 +442,8 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
                             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                             placeholder="VD: Đề thi giữa kỳ"
                           />
-                        </div>
-                      </div>
+          </div>
+        </div>
 
                       <div className="flex justify-end space-x-2 mt-4">
                         <button
@@ -607,68 +607,68 @@ D. Đáp án D
                       <div className="bg-gray-50 rounded-lg p-4">
                         <form onSubmit={handleQuestionSubmit}>
                           <div className="space-y-3">
-                            <div>
+              <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Câu hỏi
-                              </label>
-                              <textarea
+                  Câu hỏi
+                </label>
+                <textarea
                                 value={questionFormData.question}
                                 onChange={(e) => setQuestionFormData({ ...questionFormData, question: e.target.value })}
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                 placeholder="Nhập câu hỏi..."
-                                rows={3}
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Đáp án
-                              </label>
-                              <div className="space-y-2">
+                </label>
+                <div className="space-y-2">
                                 {questionFormData.options.map((option, index) => (
                                   <div key={index} className="flex items-center space-x-2">
-                                    <input
-                                      type="radio"
-                                      name="correctAnswer"
+                      <input
+                        type="radio"
+                        name="correctAnswer"
                                       checked={questionFormData.correctAnswer === index}
                                       onChange={() => setQuestionFormData({ ...questionFormData, correctAnswer: index })}
                                       className="text-blue-600"
-                                    />
-                                    <input
-                                      type="text"
-                                      value={option}
-                                      onChange={(e) => {
+                      />
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => {
                                         const newOptions = [...questionFormData.options];
-                                        newOptions[index] = e.target.value;
+                          newOptions[index] = e.target.value;
                                         setQuestionFormData({ ...questionFormData, options: newOptions });
-                                      }}
+                        }}
                                       className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                      placeholder={`Đáp án ${String.fromCharCode(65 + index)}`}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
+                        placeholder={`Đáp án ${String.fromCharCode(65 + index)}`}
+                      />
+                    </div>
+                  ))}
+                </div>
                             </div>
-                          </div>
+              </div>
 
                           <div className="flex justify-end space-x-2 mt-4">
-                            <button
-                              type="button"
-                              onClick={handleCancel}
+                <button
+                  type="button"
+                  onClick={handleCancel}
                               className="px-3 py-1 text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-                            >
+                >
                               Hủy
-                            </button>
-                            <button
-                              type="submit"
+                </button>
+                <button
+                  type="submit"
                               className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
-                            >
+                >
                               {editingQuestionId ? 'Cập nhật' : 'Thêm'}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
                     <div className="mb-4">
                       <button
@@ -678,59 +678,59 @@ D. Đáp án D
                         <Plus className="h-4 w-4" />
                         <span>Thêm câu hỏi</span>
                       </button>
-                    </div>
+            </div>
 
                     <div className="space-y-3">
                       {selectedExam && selectedExam.questions.map((question, index) => (
                         <div key={question.id} className="border border-gray-200 rounded-lg p-3">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
                               <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                                {index + 1}. {question.question}
+                        {index + 1}. {question.question}
                               </h4>
                               <div className="space-y-1">
-                                {question.options.map((option, optIndex) => (
-                                  <div
-                                    key={optIndex}
+                        {question.options.map((option, optIndex) => (
+                          <div
+                            key={optIndex}
                                     className={`p-1 rounded text-xs ${
-                                      optIndex === question.correctAnswer
+                              optIndex === question.correctAnswer
                                         ? 'bg-green-100 text-green-800'
-                                        : 'bg-gray-50 text-gray-700'
-                                    }`}
-                                  >
-                                    {String.fromCharCode(65 + optIndex)}. {option}
-                                    {optIndex === question.correctAnswer && (
+                                : 'bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            {String.fromCharCode(65 + optIndex)}. {option}
+                            {optIndex === question.correctAnswer && (
                                       <span className="ml-1 font-medium">(Đúng)</span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                             <div className="flex space-x-1 ml-2">
-                              <button
+                      <button
                                 onClick={() => handleQuestionEdit(question)}
                                 className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                              >
+                      >
                                 <Edit3 className="h-3 w-3" />
-                              </button>
-                              <button
+                      </button>
+                      <button
                                 onClick={() => handleQuestionDelete(selectedSubject!.id, selectedExam!.id, question.id)}
                                 className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              >
+                      >
                                 <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
                     </div>
                   </>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     Vui lòng chọn đề thi trước
-                  </div>
-                )}
-              </div>
+            </div>
+          )}
+        </div>
             </div>
           </div>
         )}

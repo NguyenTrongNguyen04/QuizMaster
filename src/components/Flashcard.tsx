@@ -53,8 +53,8 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
   const handleNext = () => {
     if (currentIndex < shuffledQuestions.length - 1) {
       animateCardTransition('left', () => {
-        setCurrentIndex(currentIndex + 1);
-        setIsFlipped(false);
+      setCurrentIndex(currentIndex + 1);
+      setIsFlipped(false);
       });
     }
   };
@@ -62,8 +62,8 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
   const handlePrevious = () => {
     if (currentIndex > 0) {
       animateCardTransition('right', () => {
-        setCurrentIndex(currentIndex - 1);
-        setIsFlipped(false);
+      setCurrentIndex(currentIndex - 1);
+      setIsFlipped(false);
       });
     }
   };
@@ -307,7 +307,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
         {/* Flashcard */}
         <div className="p-6">
           <div className="relative h-96 mx-auto max-w-2xl flashcard-3d overflow-hidden">
-            <div
+            <div 
               className={`flashcard-inner${isFlipped ? ' flipped' : ''} cursor-pointer transition-transform duration-300 ${
                 isAnimating 
                   ? slideDirection === 'left' 
