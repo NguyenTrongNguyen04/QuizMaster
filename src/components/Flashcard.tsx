@@ -320,65 +320,65 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
               onClick={() => setIsFlipped(!isFlipped)}
             >
               {/* Front of card */}
-              <div className="flashcard-face front rounded-xl shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center p-8 relative">
+              <div className="flashcard-face front rounded-xl shadow-lg bg-white text-gray-900 flex items-center justify-center p-8 relative border-2 border-gray-200">
                 {/* Bookmark button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleBookmark();
                   }}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-200"
                 >
                   {currentProgress?.bookmarked ? (
-                    <BookmarkCheck className="h-5 w-5 text-yellow-300" />
+                    <BookmarkCheck className="h-5 w-5 text-yellow-600" />
                   ) : (
-                    <Bookmark className="h-5 w-5 text-white" />
+                    <Bookmark className="h-5 w-5 text-gray-600" />
                   )}
                 </button>
 
                 <div className="text-center">
-                  <h3 className="text-xl font-medium mb-4">Câu hỏi:</h3>
-                  <div className="text-lg leading-relaxed mb-4 whitespace-pre-wrap text-left">
+                  <h3 className="text-xl font-medium mb-4 text-gray-900">Câu hỏi:</h3>
+                  <div className="text-lg leading-relaxed mb-4 whitespace-pre-wrap text-left text-gray-800">
                     {currentQuestion.question}
                   </div>
                   <div className="space-y-2 mb-2">
                     {currentQuestion.options.map((option, idx) => (
-                      <div key={idx} className="text-base text-left">
+                      <div key={idx} className="text-base text-left text-gray-700">
                         <span className="font-semibold">{String.fromCharCode(65 + idx)}.</span> {option}
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm opacity-75 mt-4">Nhấn để xem đáp án</p>
+                  <p className="text-sm text-gray-500 mt-4">Nhấn để xem đáp án</p>
                 </div>
               </div>
               {/* Back of card */}
-              <div className="flashcard-face back rounded-xl shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center p-8 relative">
+              <div className="flashcard-face back rounded-xl shadow-lg bg-white text-gray-900 flex items-center justify-center p-8 relative border-2 border-gray-200">
                 {/* Bookmark button on back */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleBookmark();
                   }}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-200"
                 >
                   {currentProgress?.bookmarked ? (
-                    <BookmarkCheck className="h-5 w-5 text-yellow-300" />
+                    <BookmarkCheck className="h-5 w-5 text-yellow-600" />
                   ) : (
-                    <Bookmark className="h-5 w-5 text-white" />
+                    <Bookmark className="h-5 w-5 text-gray-600" />
                   )}
                 </button>
 
                 <div className="text-center">
-                  <h3 className="text-xl font-medium mb-4">Đáp án đúng:</h3>
-                  <p className="text-lg font-medium mb-2">
+                  <h3 className="text-xl font-medium mb-4 text-gray-900">Đáp án đúng:</h3>
+                  <p className="text-lg font-medium mb-2 text-green-600">
                     {String.fromCharCode(65 + currentQuestion.correctAnswer)}. {currentQuestion.options[currentQuestion.correctAnswer]}
                   </p>
                   <div className="mt-6 space-y-2">
-                    <p className="text-sm opacity-75">Các đáp án khác:</p>
+                    <p className="text-sm text-gray-500">Các đáp án khác:</p>
                     {currentQuestion.options.map((option, index) => {
                       if (index === currentQuestion.correctAnswer) return null;
                       return (
-                        <p key={index} className="text-sm opacity-60">
+                        <p key={index} className="text-sm text-gray-400">
                           {String.fromCharCode(65 + index)}. {option}
                         </p>
                       );
