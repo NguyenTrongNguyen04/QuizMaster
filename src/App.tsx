@@ -15,6 +15,7 @@ function App() {
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('subjects', []);
   const [flashcardProgress, setFlashcardProgress] = useLocalStorage<FlashcardProgress[]>('flashcard-progress', []);
   const [quizResults, setQuizResults] = useLocalStorage<QuizResult[]>('quiz-results', []);
+  const [lastLocalUpdate, setLastLocalUpdate] = useState<Date>(new Date());
 
   // Firebase sync hook
   const {
@@ -31,6 +32,7 @@ function App() {
     flashcardProgress,
     quizResults,
     (data) => {
+      console.log('Data update from Firebase:', data);
       setSubjects(data.subjects);
       setFlashcardProgress(data.flashcardProgress);
       setQuizResults(data.quizResults);
@@ -42,38 +44,47 @@ function App() {
   };
 
   const handleSubjectsChange = (newSubjects: Subject[]) => {
+    console.log('Subjects changed, will sync to cloud');
     setSubjects(newSubjects);
+    setLastLocalUpdate(new Date());
   };
 
   const handleProgressChange = (newProgress: FlashcardProgress[]) => {
+    console.log('Progress changed, will sync to cloud');
     setFlashcardProgress(newProgress);
+    setLastLocalUpdate(new Date());
   };
 
   const handleResultSave = (result: QuizResult) => {
+    console.log('New result saved, will sync to cloud');
     setQuizResults(prev => [result, ...prev]);
+    setLastLocalUpdate(new Date());
   };
 
   const handleResultsChange = (newResults: QuizResult[]) => {
+    console.log('Results changed, will sync to cloud');
     setQuizResults(newResults);
+    setLastLocalUpdate(new Date());
   };
 
-  // Auto sync to cloud when data changes
+  // Auto sync to cloud when data changes (with debounce)
   useEffect(() => {
-    if (isConnected && user) {
-      const syncData = {
-        subjects,
-        flashcardProgress,
-        quizResults
-      };
+    if (isConnected && user && !isSyncing) {
+      console.log('Auto sync triggered - lastLocalUpdate:', lastLocalUpdate);
       
-      // Debounce sync to avoid too many requests
       const timeoutId = setTimeout(() => {
+        const syncData = {
+          subjects,
+          flashcardProgress,
+          quizResults
+        };
+        console.log('Syncing to cloud:', syncData);
         syncToCloud(syncData);
-      }, 1000);
+      }, 2000); // Increased debounce to 2 seconds
 
       return () => clearTimeout(timeoutId);
     }
-  }, [subjects, flashcardProgress, quizResults, isConnected, user, syncToCloud]);
+  }, [lastLocalUpdate, isConnected, user, isSyncing, subjects, flashcardProgress, quizResults, syncToCloud]);
 
   // Manual sync functions
   const handleSyncToCloud = async () => {
