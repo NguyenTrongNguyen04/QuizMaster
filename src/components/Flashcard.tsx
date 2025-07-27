@@ -338,7 +338,9 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, progress, onProgressCha
 
                 <div className="text-center">
                   <h3 className="text-xl font-medium mb-4">Câu hỏi:</h3>
-                  <p className="text-lg leading-relaxed mb-4">{currentQuestion.question}</p>
+                  <div className="text-lg leading-relaxed mb-4 whitespace-pre-wrap text-left">
+                    {currentQuestion.question}
+                  </div>
                   <div className="space-y-2 mb-2">
                     {currentQuestion.options.map((option, idx) => (
                       <div key={idx} className="text-base text-left">

@@ -685,9 +685,9 @@ D. Đáp án D
                         <div key={question.id} className="border border-gray-200 rounded-lg p-3">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                              <h4 className="font-medium text-gray-900 mb-2 text-sm">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm whitespace-pre-wrap">
                         {index + 1}. {question.question}
-                              </h4>
+                      </h4>
                               <div className="space-y-1">
                         {question.options.map((option, optIndex) => (
                           <div

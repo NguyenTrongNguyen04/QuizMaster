@@ -373,7 +373,7 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 mb-2">
+                      <h4 className="font-medium text-gray-900 mb-2 whitespace-pre-wrap">
                         Câu {index + 1}: {question.question}
                       </h4>
                       <div className="grid grid-cols-1 gap-2">
@@ -490,9 +490,9 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
 
         {/* Question content */}
         <div className="p-6">
-          <h3 className="text-xl font-medium text-gray-900 mb-6">
+          <div className="text-xl font-medium text-gray-900 mb-6 whitespace-pre-wrap">
             {currentQuestion.question}
-          </h3>
+          </div>
           
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => (
