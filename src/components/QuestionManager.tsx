@@ -63,24 +63,50 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
     // Tách từng block câu hỏi
     const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
     const questions: Question[] = [];
+    
     for (const block of blocks) {
-      // Tìm dòng đầu là câu hỏi
       const lines = block.split(/\n/).map(l => l.trim()).filter(Boolean);
-      if (lines.length < 6) continue; // 1 câu hỏi + 4 đáp án + đáp án đúng
+      if (lines.length < 3) continue; // Ít nhất: 1 câu hỏi + 1 đáp án + 1 dòng đáp án đúng
+      
+      // Tìm dòng đầu tiên là câu hỏi (có thể có số thứ tự)
       const questionText = lines[0].replace(/^\d+\.?\s*/, '');
-      const options = [0,1,2,3].map(i => (lines[i+1] || '').replace(/^[A-Da-d]\.?\s*/, ''));
-      const answerLine = lines.find(l => /Đáp án\s*[:：]/i.test(l)) || lines[5];
-      const match = answerLine.match(/Đáp án\s*[:：]\s*([A-Da-d])/i);
-      if (!match) continue;
-      const correctAnswer = 'ABCD'.indexOf(match[1].toUpperCase());
-      if (correctAnswer === -1) continue;
-      questions.push({
-        id: Date.now().toString() + Math.random(),
-        question: questionText,
-        options,
-        correctAnswer,
-        examId,
-      });
+      
+      // Tìm tất cả các dòng đáp án (A, B, C, D...)
+      const options: string[] = [];
+      let correctAnswer = -1;
+      
+      // Duyệt qua tất cả các dòng trừ dòng đầu và dòng cuối
+      for (let i = 1; i < lines.length - 1; i++) {
+        const line = lines[i];
+        const optionMatch = line.match(/^([A-Za-z])\.?\s*(.+)$/);
+        if (optionMatch) {
+          const optionLetter = optionMatch[1].toUpperCase();
+          const optionIndex = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.indexOf(optionLetter);
+          if (optionIndex !== -1 && optionIndex < 26) { // Giới hạn tối đa 26 đáp án
+            options[optionIndex] = optionMatch[2].trim();
+          }
+        }
+      }
+      
+      // Tìm dòng đáp án đúng (dòng cuối cùng)
+      const answerLine = lines[lines.length - 1];
+      const answerMatch = answerLine.match(/Đáp án\s*[:：]\s*([A-Za-z])/i);
+      if (answerMatch) {
+        const answerLetter = answerMatch[1].toUpperCase();
+        correctAnswer = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.indexOf(answerLetter);
+      }
+      
+      // Kiểm tra xem có đủ đáp án và đáp án đúng hợp lệ không
+      const validOptions = options.filter(opt => opt && opt.trim());
+      if (validOptions.length >= 2 && correctAnswer !== -1 && correctAnswer < validOptions.length) {
+        questions.push({
+          id: Date.now().toString() + Math.random(),
+          question: questionText,
+          options: validOptions,
+          correctAnswer,
+          examId,
+        });
+      }
     }
     return questions;
   };
