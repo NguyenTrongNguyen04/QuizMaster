@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Home from './components/Home';
 import QuestionManager from './components/QuestionManager';
@@ -6,195 +7,281 @@ import Flashcard from './components/Flashcard';
 import Quiz from './components/Quiz';
 import Results from './components/Results';
 import SyncStatus from './components/SyncStatus';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import AdminSetup from './components/AdminSetup';
+import LoginModal from './components/LoginModal';
+import Toast from './components/Toast';
 import { useFirebaseSync } from './hooks/useFirebaseSync';
 import { usePublicContent } from './hooks/usePublicContent';
+import { useAuth } from './hooks/useAuth';
 import { Subject, FlashcardProgress, QuizResult } from './types';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   
-  // Public content (subjects) - anyone can view
-  const { subjects: publicSubjects, isLoading: subjectsLoading, saveSubject, deleteSubject } = usePublicContent();
+  // Use the centralized auth hook
+  const { user, userRole, canWrite, isLoading: authLoading, error: authError, signOut } = useAuth();
   
-  // Private user data (progress and results) - only for authenticated users
-  const [flashcardProgress, setFlashcardProgress] = useLocalStorage<FlashcardProgress[]>('flashcard-progress', []);
-  const [quizResults, setQuizResults] = useLocalStorage<QuizResult[]>('quiz-results', []);
+  // Toast state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+    isVisible: boolean;
+  }>({
+    message: '',
+    type: 'success',
+    isVisible: false,
+  });
+  
+  // Local state for private data
+  const [flashcardProgress, setFlashcardProgress] = useState<FlashcardProgress[]>([]);
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
+  
+  // Firebase sync hooks - only for private data
+  const onDataUpdate = useCallback((data: { flashcardProgress: FlashcardProgress[], quizResults: QuizResult[] }) => {
+    setFlashcardProgress(data.flashcardProgress);
+    setQuizResults(data.quizResults);
+  }, []);
 
-  // Firebase sync hook for private user data
   const {
-    user,
     isConnected,
     isSyncing,
     lastSyncTime,
     syncToCloud,
-    syncFromCloud,
-    signIn,
-    signOut
+    syncFromCloud
   } = useFirebaseSync(
-    publicSubjects, // Use public subjects instead of local
     flashcardProgress,
     quizResults,
-    (data) => {
-      console.log('Private data update from Firebase:', data);
-      setFlashcardProgress(data.flashcardProgress);
-      setQuizResults(data.quizResults);
-    }
+    onDataUpdate
   );
 
-  const handlePageChange = (page: string) => {
-    setCurrentPage(page);
-  };
+  const {
+    subjects: publicSubjects,
+    isLoading: subjectsLoading,
+    saveSubject,
+    deleteSubject,
+    refreshSubjects
+  } = usePublicContent();
 
-  const handleSubjectsChange = async (newSubjects: Subject[]) => {
-    console.log('Subjects changed, saving to public content');
-    
-    // Save each subject to public content
-    for (const subject of newSubjects) {
-      await saveSubject(subject);
-    }
-  };
+  // Show toast function
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({
+      message,
+      type,
+      isVisible: true,
+    });
+  }, []);
 
-  const handleProgressChange = (newProgress: FlashcardProgress[]) => {
-    console.log('Progress changed, will sync to cloud');
-    setFlashcardProgress(newProgress);
-  };
-
-  const handleResultSave = (result: QuizResult) => {
-    console.log('New result saved, will sync to cloud');
-    setQuizResults(prev => [result, ...prev]);
-  };
-
-  const handleResultsChange = (newResults: QuizResult[]) => {
-    console.log('Results changed, will sync to cloud');
-    setQuizResults(newResults);
-  };
-
-  // Auto sync private data to cloud when it changes
+  // Auto-sync private data when user changes
   useEffect(() => {
-    if (isConnected && user && !isSyncing) {
-      console.log('Auto sync private data triggered');
-      
-      const timeoutId = setTimeout(() => {
-        const syncData = {
-          subjects: publicSubjects, // Include public subjects in sync
+    if (user && isConnected) {
+      const debounceTimer = setTimeout(() => {
+        syncToCloud({
           flashcardProgress,
           quizResults
-        };
-        console.log('Syncing private data to cloud:', syncData);
-        syncToCloud(syncData);
-      }, 2000);
-
-      return () => clearTimeout(timeoutId);
+        });
+      }, 1000);
+      
+      return () => clearTimeout(debounceTimer);
     }
-  }, [flashcardProgress, quizResults, isConnected, user, isSyncing, publicSubjects, syncToCloud]);
+  }, [user?.uid, flashcardProgress, quizResults, isConnected, syncToCloud]);
 
-  // Manual sync functions
-  const handleSyncToCloud = async () => {
-    const success = await syncToCloud({
-      subjects: publicSubjects,
+  // Memoized calculations
+  const totalQuestions = useMemo(() => {
+    return (publicSubjects || []).reduce((total: number, subject: Subject) => {
+      return total + (subject.exams || []).reduce((examTotal: number, exam: any) => {
+        return examTotal + (exam.questions || []).length;
+      }, 0);
+    }, 0);
+  }, [publicSubjects]);
+
+  const totalSubjects = useMemo(() => {
+    return publicSubjects?.length || 0;
+  }, [publicSubjects]);
+
+  const totalExams = useMemo(() => {
+    return publicSubjects?.reduce((total: number, subject: Subject) => 
+      total + (subject.exams || []).length, 0) || 0;
+  }, [publicSubjects]);
+
+  const handleSubjectsChange = useCallback((subjects: Subject[]) => {
+    if (canWrite) {
+      // Only admin can save subjects
+      subjects.forEach(subject => saveSubject(subject));
+    }
+  }, [canWrite, saveSubject]);
+
+  const handleFlashcardProgressChange = useCallback((progress: FlashcardProgress[]) => {
+    setFlashcardProgress(progress);
+  }, []);
+
+  const handleQuizComplete = useCallback((result: QuizResult) => {
+    setQuizResults(prev => [result, ...prev]);
+  }, []);
+
+  const handleSyncToCloud = useCallback(() => {
+    syncToCloud({
       flashcardProgress,
       quizResults
     });
-    
-    if (success) {
-      alert('Đồng bộ lên cloud thành công!');
-    } else {
-      alert('Lỗi khi đồng bộ lên cloud!');
-    }
-  };
-
-  const handleSyncFromCloud = async () => {
-    const success = await syncFromCloud();
-    
-    if (success) {
-      alert('Tải dữ liệu từ cloud thành công!');
-    } else {
-      alert('Lỗi khi tải dữ liệu từ cloud!');
-    }
-  };
-
-  // Tính tổng số câu hỏi từ tất cả các môn học
-  const totalQuestions = (publicSubjects || []).reduce((total, subject) => {
-    return total + (subject.exams || []).reduce((examTotal, exam) => {
-      return examTotal + (exam.questions || []).length;
-    }, 0);
-  }, 0);
+  }, [syncToCloud, flashcardProgress, quizResults]);
 
   const renderCurrentPage = () => {
+    // Only show loading if auth is still initializing
+    if (authLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Show auth error if any
+    if (authError) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-red-600 mb-4">Lỗi xác thực: {authError}</div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // If not loading and no error, render the page normally
+    // Even if user is null (anonymous), we should show the content
     switch (currentPage) {
       case 'home':
         return (
           <Home 
-            onNavigate={handlePageChange}
-            questionsCount={totalQuestions}
-            resultsCount={quizResults.length}
+            totalQuestions={totalQuestions}
+            totalSubjects={totalSubjects}
+            totalExams={totalExams}
+            userRole={userRole}
           />
         );
       case 'manage':
         return (
-          <QuestionManager 
-            subjects={publicSubjects} 
-            onSubjectsChange={handleSubjectsChange}
-            isLoading={subjectsLoading}
-          />
+          <div className="space-y-6">
+            <QuestionManager 
+              subjects={publicSubjects || []}
+              onSubjectsChange={handleSubjectsChange}
+              isLoading={subjectsLoading}
+              userRole={userRole}
+              canWrite={canWrite}
+              refreshSubjects={refreshSubjects}
+            />
+            <AdminSetup />
+          </div>
         );
       case 'flashcard':
         return (
           <Flashcard 
-            subjects={publicSubjects}
-            progress={flashcardProgress}
-            onProgressChange={handleProgressChange}
+            subjects={publicSubjects || []}
+            flashcardProgress={flashcardProgress}
+            onProgressChange={handleFlashcardProgressChange}
           />
         );
       case 'quiz':
         return (
           <Quiz 
-            subjects={publicSubjects}
-            onResultSave={handleResultSave}
+            subjects={publicSubjects || []}
+            onQuizComplete={handleQuizComplete}
           />
         );
       case 'results':
         return (
           <Results 
             results={quizResults}
-            onResultsChange={handleResultsChange}
-            subjects={publicSubjects}
+            subjects={publicSubjects || []}
           />
         );
       case 'sync':
         return (
-          <div className="max-w-4xl mx-auto p-6">
-            <SyncStatus
-              isConnected={isConnected}
-              isSyncing={isSyncing}
-              lastSyncTime={lastSyncTime}
-              onSignIn={signIn}
-              onSignOut={signOut}
-              onSyncToCloud={handleSyncToCloud}
-              onSyncFromCloud={handleSyncFromCloud}
-              user={user}
-            />
-          </div>
+          <SyncStatus
+            isConnected={isConnected}
+            lastSyncTime={lastSyncTime}
+            onSyncToCloud={handleSyncToCloud}
+            onSyncFromCloud={syncFromCloud}
+            user={user}
+            userRole={userRole}
+          />
         );
       default:
         return (
           <Home 
-            onNavigate={handlePageChange}
-            questionsCount={totalQuestions}
-            resultsCount={quizResults.length}
+            totalQuestions={totalQuestions} 
+            totalSubjects={totalSubjects} 
+            totalExams={totalExams} 
+            userRole={userRole} 
           />
         );
     }
   };
 
-  return (
+  // Admin Login Page Component
+  const AdminLoginPage = () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Login</h1>
+          <p className="text-gray-600">Đăng nhập để quản lý nội dung</p>
+        </div>
+        <LoginModal isOpen={true} onClose={() => {}} />
+      </div>
+    </div>
+  );
+
+  // Main App Component
+  const MainApp = () => (
     <div className="min-h-screen bg-gray-50">
-      <Navigation currentPage={currentPage} onPageChange={handlePageChange} />
-      <main>
+      <Navigation 
+        currentPage={currentPage} 
+        onPageChange={setCurrentPage}
+        user={user}
+        userRole={userRole}
+        onSignOut={async () => {
+          try {
+            await signOut();
+            showToast('Đăng xuất thành công!');
+          } catch (error) {
+            console.error('[App] Error signing out:', error);
+            showToast('Đăng xuất thất bại!', 'error');
+          }
+        }}
+        showToast={showToast}
+      />
+      <main className="py-6">
         {renderCurrentPage()}
       </main>
     </div>
+  );
+
+  return (
+    <Router>
+      <Routes>
+        {/* Admin Login Route */}
+        <Route path="/admin" element={<AdminLoginPage />} />
+        
+        {/* Main App Routes */}
+        <Route path="/*" element={<MainApp />} />
+      </Routes>
+      
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
+    </Router>
   );
 }
 

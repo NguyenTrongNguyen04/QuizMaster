@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   subscribeToPublicSubjects, 
   savePublicSubject, 
@@ -18,14 +18,21 @@ interface UsePublicContentReturn {
 export const usePublicContent = (): UsePublicContentReturn => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
 
-  // Load initial subjects
+  // Load initial subjects - chỉ load một lần
   useEffect(() => {
+    // Prevent double loading in Strict Mode
+    if (hasLoadedRef.current) {
+      return;
+    }
+
     const loadInitialSubjects = async () => {
       setIsLoading(true);
       try {
         const initialSubjects = await loadPublicSubjects();
         setSubjects(initialSubjects as Subject[]);
+        hasLoadedRef.current = true;
       } catch (error) {
         console.error('Error loading initial subjects:', error);
       } finally {
@@ -34,25 +41,11 @@ export const usePublicContent = (): UsePublicContentReturn => {
     };
 
     loadInitialSubjects();
-  }, []);
-
-  // Subscribe to real-time updates
-  useEffect(() => {
-    const unsubscribe = subscribeToPublicSubjects((updatedSubjects) => {
-      console.log('Public subjects updated:', updatedSubjects);
-      setSubjects(updatedSubjects as Subject[]);
-    });
-
-    return unsubscribe;
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   const saveSubject = useCallback(async (subject: Subject): Promise<boolean> => {
     try {
-      console.log('Saving public subject:', subject);
       const success = await savePublicSubject(subject);
-      if (success) {
-        console.log('Public subject saved successfully');
-      }
       return success;
     } catch (error) {
       console.error('Error saving public subject:', error);
@@ -62,11 +55,7 @@ export const usePublicContent = (): UsePublicContentReturn => {
 
   const deleteSubject = useCallback(async (subjectId: string): Promise<boolean> => {
     try {
-      console.log('Deleting public subject:', subjectId);
       const success = await deletePublicSubject(subjectId);
-      if (success) {
-        console.log('Public subject deleted successfully');
-      }
       return success;
     } catch (error) {
       console.error('Error deleting public subject:', error);

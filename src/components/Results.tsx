@@ -4,23 +4,10 @@ import { QuizResult, Subject } from '../types';
 
 interface ResultsProps {
   results: QuizResult[];
-  onResultsChange: (results: QuizResult[]) => void;
   subjects?: Subject[]; // Thêm subjects để hiển thị tên môn học và đề
 }
 
-const Results: React.FC<ResultsProps> = ({ results, onResultsChange, subjects = [] }) => {
-  const deleteResult = (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa kết quả này?')) {
-      onResultsChange(results.filter(r => r.id !== id));
-    }
-  };
-
-  const clearAllResults = () => {
-    if (confirm('Bạn có chắc chắn muốn xóa tất cả kết quả?')) {
-      onResultsChange([]);
-    }
-  };
-
+const Results: React.FC<ResultsProps> = ({ results, subjects = [] }) => {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('vi-VN', {
       year: 'numeric',
@@ -72,15 +59,6 @@ const Results: React.FC<ResultsProps> = ({ results, onResultsChange, subjects = 
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">Kết quả học tập</h2>
-            {results.length > 0 && (
-              <button
-                onClick={clearAllResults}
-                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 flex items-center space-x-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Xóa tất cả</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -184,13 +162,6 @@ const Results: React.FC<ResultsProps> = ({ results, onResultsChange, subjects = 
                         ></div>
                       </div>
                     </div>
-                    
-                    <button
-                      onClick={() => deleteResult(result.id)}
-                      className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               );

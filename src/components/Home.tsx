@@ -1,45 +1,51 @@
 import React from 'react';
 import { BookOpen, Brain, Trophy, Settings, ArrowRight, Users, Clock, Target } from 'lucide-react';
+import { UserRole } from '../hooks/useAuth';
 
 interface HomeProps {
-  onNavigate: (page: string) => void;
-  questionsCount: number;
-  resultsCount: number;
+  totalQuestions: number;
+  totalSubjects: number;
+  totalExams: number;
+  userRole: UserRole;
 }
 
-const Home: React.FC<HomeProps> = ({ onNavigate, questionsCount, resultsCount }) => {
+const Home: React.FC<HomeProps> = ({ totalQuestions, totalSubjects, totalExams, userRole }) => {
   const features = [
     {
       icon: Settings,
       title: 'Quản lý câu hỏi',
       description: 'Thêm, sửa, xóa câu hỏi trắc nghiệm một cách dễ dàng',
-      action: () => onNavigate('manage'),
+      action: () => window.location.href = '#manage',
       color: 'bg-blue-500 hover:bg-blue-600',
-      stats: `${questionsCount} câu hỏi`
+      stats: `${totalQuestions} câu hỏi`,
+      show: userRole === 'admin'
     },
     {
       icon: BookOpen,
       title: 'Học Flashcard',
       description: 'Học và ghi nhớ kiến thức qua hệ thống thẻ ghi nhớ',
-      action: () => onNavigate('flashcard'),
+      action: () => window.location.href = '#flashcard',
       color: 'bg-green-500 hover:bg-green-600',
-      stats: 'Học tương tác'
+      stats: 'Học tương tác',
+      show: true
     },
     {
       icon: Brain,
       title: 'Làm Quiz',
       description: 'Kiểm tra kiến thức với các câu hỏi trắc nghiệm ngẫu nhiên',
-      action: () => onNavigate('quiz'),
+      action: () => window.location.href = '#quiz',
       color: 'bg-purple-500 hover:bg-purple-600',
-      stats: 'Tự động chấm điểm'
+      stats: 'Tự động chấm điểm',
+      show: true
     },
     {
       icon: Trophy,
       title: 'Xem kết quả',
       description: 'Theo dõi tiến trình học tập và kết quả các bài kiểm tra',
-      action: () => onNavigate('results'),
+      action: () => window.location.href = '#results',
       color: 'bg-orange-500 hover:bg-orange-600',
-      stats: `${resultsCount} kết quả`
+      stats: 'Kết quả học tập',
+      show: true
     }
   ];
 
@@ -88,9 +94,25 @@ const Home: React.FC<HomeProps> = ({ onNavigate, questionsCount, resultsCount })
           </div>
         </div>
 
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto mb-12">
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-blue-600 mb-2">{totalQuestions}</div>
+            <div className="text-gray-600">Câu hỏi</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-green-600 mb-2">{totalSubjects}</div>
+            <div className="text-gray-600">Môn học</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-3xl font-bold text-purple-600 mb-2">{totalExams}</div>
+            <div className="text-gray-600">Đề thi</div>
+          </div>
+        </div>
+
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
-          {features.map((feature, index) => {
+          {features.filter(f => f.show).map((feature, index) => {
             const Icon = feature.icon;
             return (
               <div 
@@ -98,64 +120,49 @@ const Home: React.FC<HomeProps> = ({ onNavigate, questionsCount, resultsCount })
                 className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 group cursor-pointer"
                 onClick={feature.action}
               >
-                <div className={`${feature.color} p-3 rounded-xl inline-block mb-4 transition-transform duration-300 group-hover:scale-110`}>
-                  <Icon className="h-6 w-6 text-white" />
+                <div className={`inline-flex p-3 rounded-lg text-white mb-4 ${feature.color}`}>
+                  <Icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600 mb-4 text-sm leading-relaxed">{feature.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500 font-medium">{feature.stats}</span>
-                  <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all duration-200" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+                  {feature.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {feature.stats}
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Quick Stats */}
-        <div className="mt-16 bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Thống kê nhanh</h2>
-            <p className="text-gray-600">Tổng quan về hoạt động học tập của bạn</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
-              <div className="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="h-8 w-8 text-white" />
-              </div>
-              <p className="text-3xl font-bold text-blue-600 mb-2">{questionsCount}</p>
-              <p className="text-gray-700 font-medium">Câu hỏi có sẵn</p>
-              <p className="text-sm text-gray-600 mt-1">Sẵn sàng để học và kiểm tra</p>
-            </div>
-            
-            <div className="text-center p-6 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl">
-              <div className="bg-purple-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trophy className="h-8 w-8 text-white" />
-              </div>
-              <p className="text-3xl font-bold text-purple-600 mb-2">{resultsCount}</p>
-              <p className="text-gray-700 font-medium">Lần làm bài</p>
-              <p className="text-sm text-gray-600 mt-1">Kết quả đã được lưu trữ</p>
+        {/* Call to Action */}
+        <div className="text-center mt-16">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+            <h2 className="text-2xl font-bold mb-4">Bắt đầu học ngay hôm nay</h2>
+            <p className="text-blue-100 mb-6">
+              Tham gia hàng nghìn người đang sử dụng QuizMaster để nâng cao kiến thức
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button 
+                onClick={() => window.location.href = '#flashcard'}
+                className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              >
+                Học Flashcard
+              </button>
+              <button 
+                onClick={() => window.location.href = '#quiz'}
+                className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+              >
+                Làm Quiz
+              </button>
             </div>
           </div>
         </div>
-
-        {/* Getting Started */}
-        {questionsCount === 0 && (
-          <div className="mt-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white text-center">
-            <h2 className="text-2xl font-bold mb-4">Bắt đầu ngay hôm nay!</h2>
-            <p className="mb-6 opacity-90">
-              Thêm câu hỏi đầu tiên của bạn để bắt đầu hành trình học tập
-            </p>
-            <button
-              onClick={() => onNavigate('manage')}
-              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 inline-flex items-center space-x-2"
-            >
-              <Settings className="h-5 w-5" />
-              <span>Thêm câu hỏi ngay</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

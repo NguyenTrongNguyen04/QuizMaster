@@ -4,10 +4,10 @@ import { Subject, Question, QuizResult } from '../types';
 
 interface QuizProps {
   subjects: Subject[];
-  onResultSave: (result: QuizResult) => void;
+  onQuizComplete: (result: QuizResult) => void;
 }
 
-const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
+const Quiz: React.FC<QuizProps> = ({ subjects, onQuizComplete }) => {
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
@@ -108,17 +108,17 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
 
     setResult(quizResult);
     setIsFinished(true);
-    onResultSave(quizResult);
+    onQuizComplete(quizResult);
   };
 
   const resetQuiz = () => {
     setIsStarted(false);
-    setIsFinished(false);
     setCurrentQuestionIndex(0);
     setUserAnswers([]);
     setQuizQuestions([]);
     setTimeLeft(0);
     setStartTime(null);
+    setIsFinished(false);
     setResult(null);
   };
 
@@ -135,39 +135,22 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Tính tổng số câu hỏi từ tất cả các môn học
-  const totalQuestions = subjects.reduce((total, subject) => {
-    return total + subject.exams.reduce((examTotal, exam) => {
-      return examTotal + exam.questions.length;
-    }, 0);
-  }, 0);
-
-  if (totalQuestions === 0) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-          <p className="text-gray-500 text-lg">Chưa có câu hỏi nào cho quiz</p>
-          <p className="text-gray-400 text-sm mt-2">Vui lòng thêm câu hỏi trong phần Quản lý</p>
-        </div>
-      </div>
-    );
-  }
-
   if (isSelecting) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-xl shadow-lg">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Chọn môn học và đề để làm quiz</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Chọn môn học và đề thi</h2>
+            <p className="text-gray-600 mt-2">Chọn môn học và đề thi để bắt đầu làm bài kiểm tra</p>
           </div>
-          
+
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Chọn môn học */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <BookOpen className="h-5 w-5 mr-2" />
-                  Chọn môn học
+                  Môn học
                 </h3>
                 <div className="space-y-2">
                   {subjects.map((subject) => (
@@ -191,14 +174,14 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
               </div>
 
               {/* Chọn đề thi */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <FileText className="h-5 w-5 mr-2" />
-                  Chọn đề thi
+                  Đề thi
                 </h3>
-                {selectedSubject ? (
+                {selectedSubjectId ? (
                   <div className="space-y-2">
-                    {selectedSubject.exams.map((exam) => (
+                    {selectedSubject!.exams.map((exam) => (
                       <div
                         key={exam.id}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors duration-200 ${
@@ -211,7 +194,7 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
                         <div className="font-medium text-gray-900">{exam.name}</div>
                         <div className="text-sm text-gray-500">{exam.code}</div>
                         <div className="text-xs text-gray-400 mt-1">
-                          {exam.questions.length} câu hỏi
+                          {(exam.questions || []).length} câu hỏi
                         </div>
                       </div>
                     ))}
@@ -224,14 +207,53 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
               </div>
             </div>
 
-            {selectedExam && (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => setIsSelecting(false)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200"
-                >
-                  Bắt đầu quiz với {selectedExam.name}
-                </button>
+            {/* Quiz Mode Selection */}
+            {selectedExamId && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">Chế độ làm bài:</h4>
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      value="full"
+                      checked={quizMode === 'full'}
+                      onChange={() => setQuizMode('full')}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm">
+                      Làm toàn bộ đề ({selectedExam!.questions.length} câu)
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="radio"
+                      name="quizMode"
+                      value="limited"
+                      checked={quizMode === 'limited'}
+                      onChange={() => setQuizMode('limited')}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm">
+                      Làm {customQuizSize} câu (ngẫu nhiên)
+                    </span>
+                  </label>
+                  {quizMode === 'limited' && (
+                    <div className="ml-6">
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Số câu hỏi:
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={selectedExam!.questions.length}
+                        value={customQuizSize}
+                        onChange={(e) => setCustomQuizSize(parseInt(e.target.value) || 10)}
+                        className="w-20 p-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -243,90 +265,49 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   if (!isStarted) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Bài kiểm tra trắc nghiệm</h2>
-            
-            {/* Subject and Exam info */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="text-lg text-gray-700">
-                <span className="font-medium">{selectedSubject!.name}</span> - 
-                <span className="font-medium ml-1">{selectedExam!.name}</span>
-              </div>
-            </div>
-            
-            {/* Quiz Mode Selection */}
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Chọn chế độ làm bài:</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="text-center">
-                  <label className="flex items-center justify-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="quizMode"
-                      value="full"
-                      checked={quizMode === 'full'}
-                      onChange={() => setQuizMode('full')}
-                      className="text-blue-600"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900">Làm toàn bộ đề</div>
-                      <div className="text-sm text-gray-600">{selectedExam!.questions.length} câu hỏi</div>
-                    </div>
-                  </label>
-                </div>
-                <div className="text-center">
-                  <label className="flex items-center justify-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="quizMode"
-                      value="limited"
-                      checked={quizMode === 'limited'}
-                      onChange={() => setQuizMode('limited')}
-                      className="text-blue-600"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900">Làm một phần</div>
-                      <div className="text-sm text-gray-600">
-                        <input
-                          type="number"
-                          min="1"
-                          max={selectedExam!.questions.length}
-                          value={customQuizSize}
-                          onChange={(e) => setCustomQuizSize(parseInt(e.target.value) || 10)}
-                          className="w-16 p-1 border border-gray-300 rounded text-center text-sm"
-                          disabled={quizMode !== 'limited'}
-                        />
-                        {' '}câu hỏi
-                      </div>
-                    </div>
-                  </label>
+        <div className="bg-white rounded-xl shadow-lg">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-900">Chuẩn bị làm bài</h2>
+            <p className="text-gray-600 mt-2">
+              {selectedSubject?.name} - {selectedExam?.name}
+            </p>
+          </div>
+
+          <div className="p-6">
+            <div className="text-center">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Thông tin bài kiểm tra</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{QUIZ_SIZE}</div>
+                    <div className="text-sm text-gray-600">Câu hỏi</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{formatTime(TIME_LIMIT)}</div>
+                    <div className="text-sm text-gray-600">Thời gian</div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{Math.round((QUIZ_SIZE / TIME_LIMIT) * 60)}</div>
+                    <div className="text-sm text-gray-600">Phút/câu</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="bg-blue-50 rounded-lg p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{QUIZ_SIZE}</p>
-                  <p className="text-sm text-gray-600">Câu hỏi</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{formatTime(TIME_LIMIT)}</p>
-                  <p className="text-sm text-gray-600">Thời gian</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{selectedExam!.questions.length}</p>
-                  <p className="text-sm text-gray-600">Tổng câu hỏi có sẵn</p>
-                </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={startQuiz}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200"
+                >
+                  Bắt đầu làm bài
+                </button>
+                <button
+                  onClick={handleBackToSelection}
+                  className="text-gray-600 hover:text-gray-800 px-4 py-2"
+                >
+                  Quay lại chọn đề
+                </button>
               </div>
             </div>
-            <button
-              onClick={startQuiz}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200"
-            >
-              Bắt đầu Quiz
-            </button>
           </div>
         </div>
       </div>
@@ -334,95 +315,58 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   }
 
   if (isFinished && result) {
-    const scorePercentage = (result.score / result.totalQuestions) * 100;
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Kết quả Quiz</h2>
-            <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full mb-4 ${
-              scorePercentage >= 80 ? 'bg-green-100' : scorePercentage >= 60 ? 'bg-yellow-100' : 'bg-red-100'
-            }`}>
-              <span className={`text-3xl font-bold ${
-                scorePercentage >= 80 ? 'text-green-600' : scorePercentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {Math.round(scorePercentage)}%
-              </span>
-            </div>
-            <p className="text-xl text-gray-700">
-              Bạn đã trả lời đúng {result.score}/{result.totalQuestions} câu
+        <div className="bg-white rounded-xl shadow-lg">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-900">Kết quả bài kiểm tra</h2>
+            <p className="text-gray-600 mt-2">
+              {selectedSubject?.name} - {selectedExam?.name}
             </p>
-            <p className="text-gray-500">Thời gian: {formatTime(result.timeSpent)}</p>
           </div>
 
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-gray-900">Chi tiết từng câu:</h3>
-            {result.questions.map((question, index) => {
-              const userAnswer = result.userAnswers[index];
-              const isCorrect = userAnswer === question.correctAnswer;
-              const wasAnswered = userAnswer !== -1;
+          <div className="p-6">
+            <div className="text-center mb-8">
+              <div className="text-6xl font-bold text-blue-600 mb-4">
+                {Math.round((result.score / result.totalQuestions) * 100)}%
+              </div>
+              <div className="text-xl text-gray-600">
+                {result.score}/{result.totalQuestions} câu đúng
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                Thời gian: {formatTime(result.timeSpent)}
+              </div>
+            </div>
 
-              return (
-                <div key={question.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      {isCorrect ? (
-                        <CheckCircle className="h-6 w-6 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-6 w-6 text-red-500" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 mb-2 whitespace-pre-wrap">
-                        Câu {index + 1}: {question.question}
-                      </h4>
-                      <div className="grid grid-cols-1 gap-2">
-                        {question.options.map((option, optIndex) => {
-                          let bgClass = 'bg-gray-50';
-                          let textClass = 'text-gray-700';
-                          
-                          if (optIndex === question.correctAnswer) {
-                            bgClass = 'bg-green-100 border-green-200';
-                            textClass = 'text-green-800';
-                          } else if (wasAnswered && optIndex === userAnswer && !isCorrect) {
-                            bgClass = 'bg-red-100 border-red-200';
-                            textClass = 'text-red-800';
-                          }
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-green-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-600">{result.score}</div>
+                <div className="text-sm text-gray-600">Đúng</div>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-red-600">{result.totalQuestions - result.score}</div>
+                <div className="text-sm text-gray-600">Sai</div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600">{formatTime(result.timeSpent)}</div>
+                <div className="text-sm text-gray-600">Thời gian</div>
+              </div>
+            </div>
 
-                          return (
-                            <div
-                              key={optIndex}
-                              className={`p-2 rounded border ${bgClass} ${textClass} text-sm`}
-                            >
-                              {String.fromCharCode(65 + optIndex)}. {option}
-                              {optIndex === question.correctAnswer && (
-                                <span className="ml-2 font-medium">(Đáp án đúng)</span>
-                              )}
-                              {wasAnswered && optIndex === userAnswer && optIndex !== question.correctAnswer && (
-                                <span className="ml-2 font-medium">(Bạn chọn)</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {!wasAnswered && (
-                        <p className="text-red-500 text-sm mt-2">Không trả lời</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={resetQuiz}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors duration-200"
-            >
-              <RotateCcw className="h-5 w-5" />
-              <span>Làm lại Quiz</span>
-            </button>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={resetQuiz}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+              >
+                Làm lại
+              </button>
+              <button
+                onClick={handleBackToSelection}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg"
+              >
+                Chọn đề khác
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -430,118 +374,126 @@ const Quiz: React.FC<QuizProps> = ({ subjects, onResultSave }) => {
   }
 
   const currentQuestion = quizQuestions[currentQuestionIndex];
-  const answeredCount = userAnswers.filter(answer => answer !== -1).length;
+  const userAnswer = userAnswers[currentQuestionIndex];
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-xl shadow-lg">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Quiz đang diễn ra</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Bài kiểm tra</h2>
+              <p className="text-gray-600 mt-1">
+                {selectedSubject?.name} - {selectedExam?.name}
+              </p>
+            </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-orange-600">
+              <div className="flex items-center space-x-2 text-red-600">
                 <Clock className="h-5 w-5" />
-                <span className="font-mono text-lg">{formatTime(timeLeft)}</span>
+                <span className="font-semibold">{formatTime(timeLeft)}</span>
               </div>
             </div>
           </div>
-          
-          {/* Subject and Exam info */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">{selectedSubject!.name}</span> - 
-              <span className="font-medium ml-1">{selectedExam!.name}</span>
+
+          {/* Progress */}
+          <div className="mt-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Câu {currentQuestionIndex + 1} / {quizQuestions.length}</span>
+              <span>{Math.round(((currentQuestionIndex + 1) / quizQuestions.length) * 100)}% hoàn thành</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%` }}
+              ></div>
             </div>
           </div>
-          
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Câu {currentQuestionIndex + 1} / {quizQuestions.length}</span>
-            <span>Đã trả lời: {answeredCount}/{quizQuestions.length}</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%` }}
-            ></div>
-          </div>
         </div>
 
-        {/* Question navigation */}
-        <div className="p-4 bg-gray-50 border-b border-gray-200">
-          <div className="flex flex-wrap gap-2">
-            {quizQuestions.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToQuestion(index)}
-                className={`w-8 h-8 rounded text-sm font-medium transition-colors duration-200 ${
-                  index === currentQuestionIndex
-                    ? 'bg-blue-600 text-white'
-                    : userAnswers[index] !== -1
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Question content */}
+        {/* Question */}
         <div className="p-6">
-          <div className="text-xl font-medium text-gray-900 mb-6 whitespace-pre-wrap">
-            {currentQuestion.question}
-          </div>
-          
-          <div className="space-y-3">
-            {currentQuestion.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(index)}
-                className={`w-full p-4 text-left border-2 rounded-lg transition-all duration-200 ${
-                  userAnswers[currentQuestionIndex] === index
-                    ? 'border-blue-600 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <span className="font-medium mr-3">
-                  {String.fromCharCode(65 + index)}.
-                </span>
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="p-6 border-t border-gray-200">
-          <div className="flex justify-between">
-            <button
-              onClick={() => goToQuestion(Math.max(0, currentQuestionIndex - 1))}
-              disabled={currentQuestionIndex === 0}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              ← Câu trước
-            </button>
-            
-            <div className="flex space-x-3">
-              {currentQuestionIndex === quizQuestions.length - 1 ? (
-                <button
-                  onClick={handleFinishQuiz}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200"
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Câu {currentQuestionIndex + 1}: {currentQuestion.question}
+            </h3>
+            <div className="space-y-3">
+              {currentQuestion.options.map((option, index) => (
+                <label
+                  key={index}
+                  className={`block p-4 border-2 rounded-lg cursor-pointer transition-colors duration-200 ${
+                    userAnswer === index
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
                 >
-                  Nộp bài
-                </button>
-              ) : (
-                <button
-                  onClick={() => goToQuestion(Math.min(quizQuestions.length - 1, currentQuestionIndex + 1))}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                >
-                  Câu tiếp →
-                </button>
-              )}
+                  <input
+                    type="radio"
+                    name={`question-${currentQuestionIndex}`}
+                    value={index}
+                    checked={userAnswer === index}
+                    onChange={() => handleAnswerSelect(index)}
+                    className="sr-only"
+                  />
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      userAnswer === index ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                    }`}>
+                      {userAnswer === index && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
+                    <span className="flex-1 whitespace-pre-wrap">{option}</span>
+                  </div>
+                </label>
+              ))}
             </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => goToQuestion(currentQuestionIndex - 1)}
+              disabled={currentQuestionIndex === 0}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <span>← Trước</span>
+            </button>
+
+            <div className="flex space-x-2">
+              {quizQuestions.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToQuestion(index)}
+                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors duration-200 ${
+                    index === currentQuestionIndex
+                      ? 'bg-blue-600 text-white'
+                      : userAnswers[index] !== -1
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+
+            {currentQuestionIndex === quizQuestions.length - 1 ? (
+              <button
+                onClick={handleFinishQuiz}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
+              >
+                Nộp bài
+              </button>
+            ) : (
+              <button
+                onClick={() => goToQuestion(currentQuestionIndex + 1)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 flex items-center space-x-2"
+              >
+                <span>Tiếp →</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

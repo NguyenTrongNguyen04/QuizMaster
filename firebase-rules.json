@@ -2,10 +2,10 @@
   "rules": {
     "public": {
       ".read": true,
-      ".write": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.token.email.replace('.', ',')).exists()",
       "subjects": {
         ".read": true,
-        ".write": "auth != null"
+        ".write": "auth != null && root.child('admins').child(auth.token.email.replace('.', ',')).exists()"
       }
     },
     "users": {
@@ -21,6 +21,10 @@
           ".write": "$uid === auth.uid"
         }
       }
+    },
+    "admins": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.token.email.replace('.', ',')).exists()"
     }
   }
 } 

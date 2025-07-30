@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit3, Save, X, BookOpen, FileText, Upload, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, BookOpen, FileText, Upload, Loader2, Lock } from 'lucide-react';
 import { Subject, Exam, Question } from '../types';
+import { UserRole } from '../hooks/useAuth';
 
 interface QuestionManagerProps {
   subjects: Subject[];
   onSubjectsChange: (subjects: Subject[]) => void;
   isLoading?: boolean;
+  userRole: UserRole;
+  canWrite: boolean;
+  refreshSubjects: () => Promise<void>; // Thêm prop này
 }
 
-const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsChange, isLoading = false }) => {
+const QuestionManager: React.FC<QuestionManagerProps> = ({ 
+  subjects, 
+  onSubjectsChange, 
+  isLoading = false,
+  userRole,
+  canWrite,
+  refreshSubjects // Nhận prop này
+}) => {
   const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [isAddingExam, setIsAddingExam] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
@@ -112,8 +123,13 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
   };
 
   // Subject handlers
-  const handleSubjectSubmit = (e: React.FormEvent) => {
+  const handleSubjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+
     if (!subjectFormData.code.trim() || !subjectFormData.name.trim()) {
       alert('Vui lòng điền đầy đủ mã môn học và tên môn học');
       return;
@@ -125,7 +141,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
           ? { ...s, ...subjectFormData }
           : s
       );
-      onSubjectsChange(updatedSubjects);
+      await onSubjectsChange(updatedSubjects);
       setEditingSubjectId(null);
     } else {
       const newSubject: Subject = {
@@ -133,13 +149,21 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
         ...subjectFormData,
         exams: [],
       };
-      onSubjectsChange([...subjects, newSubject]);
+      await onSubjectsChange([...subjects, newSubject]);
       setIsAddingSubject(false);
     }
     resetSubjectForm();
+    if (typeof refreshSubjects === 'function') {
+      await refreshSubjects();
+    }
   };
 
   const handleSubjectEdit = (subject: Subject) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     setSubjectFormData({
       code: subject.code,
       name: subject.name,
@@ -149,14 +173,24 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
   };
 
   const handleSubjectDelete = (id: string) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     if (confirm('Bạn có chắc chắn muốn xóa môn học này? Tất cả đề và câu hỏi sẽ bị xóa.')) {
       onSubjectsChange(subjects.filter(s => s.id !== id));
     }
   };
 
   // Exam handlers
-  const handleExamSubmit = (e: React.FormEvent) => {
+  const handleExamSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     if (!selectedSubjectId || !examFormData.code.trim() || !examFormData.name.trim()) {
       alert('Vui lòng chọn môn học và điền đầy đủ mã đề và tên đề');
       return;
@@ -185,13 +219,21 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
       return s;
     });
 
-    onSubjectsChange(updatedSubjects);
+    await onSubjectsChange(updatedSubjects);
     setEditingExamId(null);
     setIsAddingExam(false);
     resetExamForm();
+    if (typeof refreshSubjects === 'function') {
+      await refreshSubjects();
+    }
   };
 
   const handleExamEdit = (exam: Exam) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     setExamFormData({
       code: exam.code,
       name: exam.name,
@@ -201,6 +243,11 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
   };
 
   const handleExamDelete = (subjectId: string, examId: string) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     if (confirm('Bạn có chắc chắn muốn xóa đề này? Tất cả câu hỏi sẽ bị xóa.')) {
       const updatedSubjects = subjects.map(s => {
         if (s.id === subjectId) {
@@ -213,8 +260,13 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
   };
 
   // Question handlers
-  const handleQuestionSubmit = (e: React.FormEvent) => {
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     if (!selectedExamId || !questionFormData.question.trim() || questionFormData.options.some(opt => !opt.trim())) {
       alert('Vui lòng chọn đề và điền đầy đủ câu hỏi và các đáp án');
       return;
@@ -248,13 +300,21 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
       };
     });
 
-    onSubjectsChange(updatedSubjects);
+    await onSubjectsChange(updatedSubjects);
     setEditingQuestionId(null);
     setIsAddingQuestion(false);
     resetQuestionForm();
+    if (typeof refreshSubjects === 'function') {
+      await refreshSubjects();
+    }
   };
 
   const handleQuestionEdit = (question: Question) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     setQuestionFormData({
       question: question.question,
       options: [...question.options],
@@ -265,6 +325,11 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
   };
 
   const handleQuestionDelete = (subjectId: string, examId: string, questionId: string) => {
+    if (!canWrite) {
+      alert('Bạn không có quyền thực hiện thao tác này');
+      return;
+    }
+    
     if (confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) {
       const updatedSubjects = subjects.map(s => {
         if (s.id === subjectId) {
@@ -298,6 +363,26 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({ subjects, onSubjectsC
 
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
+
+  // Nếu không phải admin, hiển thị thông báo
+  if (!canWrite) {
+    return (
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="bg-white rounded-xl shadow-lg">
+          <div className="p-12 text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Chế độ xem</h2>
+            <p className="text-gray-600 mb-4">
+              Bạn đang ở chế độ xem. Chỉ admin mới có thể quản lý nội dung.
+            </p>
+            <div className="text-sm text-gray-500">
+              Vai trò hiện tại: <span className="font-medium">{userRole || 'Khách'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6">
