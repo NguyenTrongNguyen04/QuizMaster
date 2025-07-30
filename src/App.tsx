@@ -177,6 +177,7 @@ function App() {
               userRole={userRole}
               canWrite={canWrite}
               refreshSubjects={refreshSubjects}
+              deleteSubject={deleteSubject}
             />
             <AdminSetup />
           </div>

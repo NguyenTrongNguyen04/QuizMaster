@@ -9,7 +9,8 @@ interface QuestionManagerProps {
   isLoading?: boolean;
   userRole: UserRole;
   canWrite: boolean;
-  refreshSubjects: () => Promise<void>; // Thêm prop này
+  refreshSubjects: () => Promise<void>;
+  deleteSubject: (subjectId: string) => Promise<boolean>; // Thêm prop này
 }
 
 const QuestionManager: React.FC<QuestionManagerProps> = ({ 
@@ -18,7 +19,8 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
   isLoading = false,
   userRole,
   canWrite,
-  refreshSubjects // Nhận prop này
+  refreshSubjects,
+  deleteSubject // Nhận prop này
 }) => {
   const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [isAddingExam, setIsAddingExam] = useState(false);
@@ -172,14 +174,33 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
     setIsAddingSubject(true);
   };
 
-  const handleSubjectDelete = (id: string) => {
+  const handleSubjectDelete = async (id: string) => {
+    console.log('[QuestionManager] Deleting subject:', id, 'canWrite:', canWrite);
+    
     if (!canWrite) {
       alert('Bạn không có quyền thực hiện thao tác này');
       return;
     }
     
     if (confirm('Bạn có chắc chắn muốn xóa môn học này? Tất cả đề và câu hỏi sẽ bị xóa.')) {
-      onSubjectsChange(subjects.filter(s => s.id !== id));
+      try {
+        console.log('[QuestionManager] Calling deleteSubject...');
+        const success = await deleteSubject(id);
+        console.log('[QuestionManager] deleteSubject result:', success);
+        
+        if (success) {
+          // Update local state
+          onSubjectsChange(subjects.filter(s => s.id !== id));
+          // Refresh from Firebase
+          await refreshSubjects();
+          console.log('[QuestionManager] Subject deleted successfully');
+        } else {
+          alert('Xóa môn học thất bại. Vui lòng thử lại.');
+        }
+      } catch (error) {
+        console.error('[QuestionManager] Error deleting subject:', error);
+        alert('Có lỗi xảy ra khi xóa môn học. Vui lòng thử lại.');
+      }
     }
   };
 
@@ -242,7 +263,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
     setIsAddingExam(true);
   };
 
-  const handleExamDelete = (subjectId: string, examId: string) => {
+  const handleExamDelete = async (subjectId: string, examId: string) => {
     if (!canWrite) {
       alert('Bạn không có quyền thực hiện thao tác này');
       return;
@@ -255,7 +276,9 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
         }
         return s;
       });
-      onSubjectsChange(updatedSubjects);
+      await onSubjectsChange(updatedSubjects);
+      // Refresh from Firebase
+      await refreshSubjects();
     }
   };
 
@@ -324,7 +347,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
     setIsAddingQuestion(true);
   };
 
-  const handleQuestionDelete = (subjectId: string, examId: string, questionId: string) => {
+  const handleQuestionDelete = async (subjectId: string, examId: string, questionId: string) => {
     if (!canWrite) {
       alert('Bạn không có quyền thực hiện thao tác này');
       return;
@@ -345,7 +368,9 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
         }
         return s;
       });
-      onSubjectsChange(updatedSubjects);
+      await onSubjectsChange(updatedSubjects);
+      // Refresh from Firebase
+      await refreshSubjects();
     }
   };
 
