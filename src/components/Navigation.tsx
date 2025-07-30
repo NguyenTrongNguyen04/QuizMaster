@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BookOpen, FileText, BarChart3, RefreshCw, Settings } from 'lucide-react';
+import { Home, BookOpen, FileText, BarChart3, Settings, Brain } from 'lucide-react';
 import { User } from 'firebase/auth';
 import UserStatus from './UserStatus';
 import { UserRole } from '../hooks/useAuth';
@@ -16,10 +16,9 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user, userRole, onSignOut, showToast }) => {
   const navItems = [
     { id: 'home', label: 'Trang chủ', icon: Home },
-    { id: 'flashcard', label: 'Flashcard', icon: BookOpen },
+    { id: 'flashcard', label: 'Học tập', icon: BookOpen },
     { id: 'quiz', label: 'Kiểm tra', icon: FileText },
-    { id: 'results', label: 'Kết quả', icon: BarChart3 },
-    { id: 'sync', label: 'Đồng bộ', icon: RefreshCw },
+    { id: 'results', label: 'Báo cáo', icon: BarChart3 },
   ];
 
   // Add manage tab only for admin users
@@ -28,19 +27,23 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
   }
 
   return (
-    <nav className="bg-white shadow-lg border-b">
+    <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo and Brand */}
+          {/* Professional Logo and Brand */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">QuizMaster</span>
+            <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => onPageChange('home')}>
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2 rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300">
+                <Brain className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                QuizMaster
+              </span>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-1">
+          {/* Professional Navigation Links */}
+          <div className="hidden md:flex items-center space-x-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;
@@ -49,14 +52,17 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
                 <button
                   key={item.id}
                   onClick={() => onPageChange(item.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
                     isActive
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
+                  {isActive && (
+                    <div className="w-1 h-1 bg-blue-600 rounded-full"></div>
+                  )}
                 </button>
               );
             })}
@@ -70,7 +76,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
 
         {/* Mobile Navigation */}
         <div className="md:hidden">
-          <div className="flex space-x-1 overflow-x-auto pb-2">
+          <div className="flex space-x-2 overflow-x-auto pb-3 px-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;
@@ -79,14 +85,17 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
                 <button
                   key={item.id}
                   onClick={() => onPageChange(item.id)}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
                   <Icon className="h-3 w-3" />
                   <span>{item.label}</span>
+                  {isActive && (
+                    <div className="w-1 h-1 bg-blue-600 rounded-full"></div>
+                  )}
                 </button>
               );
             })}

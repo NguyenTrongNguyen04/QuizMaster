@@ -6,7 +6,6 @@ import QuestionManager from './components/QuestionManager';
 import Flashcard from './components/Flashcard';
 import Quiz from './components/Quiz';
 import Results from './components/Results';
-import SyncStatus from './components/SyncStatus';
 import AdminSetup from './components/AdminSetup';
 import LoginModal from './components/LoginModal';
 import Toast from './components/Toast';
@@ -118,13 +117,6 @@ function App() {
     setQuizResults(prev => [result, ...prev]);
   }, []);
 
-  const handleSyncToCloud = useCallback(() => {
-    syncToCloud({
-      flashcardProgress,
-      quizResults
-    });
-  }, [syncToCloud, flashcardProgress, quizResults]);
-
   const renderCurrentPage = () => {
     // Only show loading if auth is still initializing
     if (authLoading) {
@@ -202,17 +194,6 @@ function App() {
           <Results 
             results={quizResults}
             subjects={publicSubjects || []}
-          />
-        );
-      case 'sync':
-        return (
-          <SyncStatus
-            isConnected={isConnected}
-            lastSyncTime={lastSyncTime}
-            onSyncToCloud={handleSyncToCloud}
-            onSyncFromCloud={syncFromCloud}
-            user={user}
-            userRole={userRole}
           />
         );
       default:
