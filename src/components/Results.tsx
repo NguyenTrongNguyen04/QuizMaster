@@ -1,13 +1,24 @@
-import React from 'react';
-import { Trophy, Calendar, Clock, Target, TrendingUp, Trash2, BookOpen, FileText } from 'lucide-react';
-import { QuizResult, Subject } from '../types';
+import React, { useState } from 'react';
+import { CheckCircle, XCircle, Clock, TrendingUp, Calendar, Trophy, Target, BookOpen, FileText } from 'lucide-react';
+import { QuizResult } from '../types';
+
+interface SubjectWithExams {
+  id: string;
+  majorId: string;
+  name: string;
+  description: string;
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+  exams: any[];
+}
 
 interface ResultsProps {
   results: QuizResult[];
-  subjects?: Subject[]; // Thêm subjects để hiển thị tên môn học và đề
+  subjects: SubjectWithExams[];
 }
 
-const Results: React.FC<ResultsProps> = ({ results, subjects = [] }) => {
+const Results: React.FC<ResultsProps> = ({ results, subjects }) => {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('vi-VN', {
       year: 'numeric',

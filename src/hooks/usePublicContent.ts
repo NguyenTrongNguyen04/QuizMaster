@@ -1,85 +1,129 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  subscribeToPublicSubjects, 
-  savePublicSubject, 
-  deletePublicSubject,
-  loadPublicSubjects 
+  loadPublicMajors,
+  loadSubjectsByMajor,
+  loadExamsBySubject,
+  subscribeToPublicMajors,
+  subscribeToSubjectsByMajor,
+  Major,
+  Subject,
+  Exam
 } from '../config/firebase';
-import { Subject } from '../types';
+
+interface SubjectWithExams {
+  id: string;
+  majorId: string;
+  name: string;
+  description: string;
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+  exams: Exam[];
+}
 
 interface UsePublicContentReturn {
-  subjects: Subject[];
+  majors: Major[];
+  subjects: SubjectWithExams[];
   isLoading: boolean;
-  saveSubject: (subject: Subject) => Promise<boolean>;
-  deleteSubject: (subjectId: string) => Promise<boolean>;
-  refreshSubjects: () => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 export const usePublicContent = (): UsePublicContentReturn => {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [subjects, setSubjects] = useState<SubjectWithExams[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
-  // Load initial subjects - chỉ load một lần
+  // Load initial data - chỉ load một lần
   useEffect(() => {
     // Prevent double loading in Strict Mode
     if (hasLoadedRef.current) {
       return;
     }
 
-    const loadInitialSubjects = async () => {
+    const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        const initialSubjects = await loadPublicSubjects();
-        setSubjects(initialSubjects as Subject[]);
+        console.log('[usePublicContent] Loading initial data...');
+        
+        // Load majors
+        const initialMajors = await loadPublicMajors();
+        console.log('[usePublicContent] Loaded majors:', initialMajors);
+        setMajors(initialMajors as Major[]);
+        
+        // Load all subjects with their exams for all majors
+        const allSubjects: SubjectWithExams[] = [];
+        for (const major of initialMajors as Major[]) {
+          const majorSubjects = await loadSubjectsByMajor(major.id);
+          console.log(`[usePublicContent] Loaded subjects for major ${major.id}:`, majorSubjects);
+          
+          // Load exams for each subject
+          for (const subject of majorSubjects as Subject[]) {
+            const subjectExams = await loadExamsBySubject(subject.id);
+            console.log(`[usePublicContent] Loaded exams for subject ${subject.id}:`, subjectExams);
+            
+            allSubjects.push({
+              ...subject,
+              exams: subjectExams as Exam[]
+            });
+          }
+        }
+        
+        console.log('[usePublicContent] All subjects with exams loaded:', allSubjects);
+        setSubjects(allSubjects);
+        
         hasLoadedRef.current = true;
       } catch (error) {
-        console.error('Error loading initial subjects:', error);
+        console.error('[usePublicContent] Error loading initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadInitialSubjects();
+    loadInitialData();
   }, []); // Empty dependency array to run only once
 
-  const saveSubject = useCallback(async (subject: Subject): Promise<boolean> => {
-    try {
-      const success = await savePublicSubject(subject);
-      return success;
-    } catch (error) {
-      console.error('Error saving public subject:', error);
-      return false;
-    }
-  }, []);
-
-  const deleteSubject = useCallback(async (subjectId: string): Promise<boolean> => {
-    try {
-      const success = await deletePublicSubject(subjectId);
-      return success;
-    } catch (error) {
-      console.error('Error deleting public subject:', error);
-      return false;
-    }
-  }, []);
-
-  const refreshSubjects = useCallback(async () => {
+  const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const refreshedSubjects = await loadPublicSubjects();
-      setSubjects(refreshedSubjects as Subject[]);
+      console.log('[usePublicContent] Refreshing data...');
+      
+      // Load majors
+      const refreshedMajors = await loadPublicMajors();
+      console.log('[usePublicContent] Refreshed majors:', refreshedMajors);
+      setMajors(refreshedMajors as Major[]);
+      
+      // Load all subjects with their exams for all majors
+      const allSubjects: SubjectWithExams[] = [];
+      for (const major of refreshedMajors as Major[]) {
+        const majorSubjects = await loadSubjectsByMajor(major.id);
+        console.log(`[usePublicContent] Refreshed subjects for major ${major.id}:`, majorSubjects);
+        
+        // Load exams for each subject
+        for (const subject of majorSubjects as Subject[]) {
+          const subjectExams = await loadExamsBySubject(subject.id);
+          console.log(`[usePublicContent] Refreshed exams for subject ${subject.id}:`, subjectExams);
+          
+          allSubjects.push({
+            ...subject,
+            exams: subjectExams as Exam[]
+          });
+        }
+      }
+      
+      console.log('[usePublicContent] All refreshed subjects with exams:', allSubjects);
+      setSubjects(allSubjects);
     } catch (error) {
-      console.error('Error refreshing subjects:', error);
+      console.error('[usePublicContent] Error refreshing data:', error);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   return {
+    majors,
     subjects,
     isLoading,
-    saveSubject,
-    deleteSubject,
-    refreshSubjects
+    refreshData
   };
 }; 

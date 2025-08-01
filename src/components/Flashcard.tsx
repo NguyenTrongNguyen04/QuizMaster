@@ -1,41 +1,126 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, CheckCircle, XCircle, Shuffle, BookOpen, FileText, Bookmark, BookmarkCheck } from 'lucide-react';
-import { Subject, Question, FlashcardProgress } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Question, FlashcardProgress } from '../types';
+
+interface SubjectWithExams {
+  id: string;
+  majorId: string;
+  name: string;
+  description: string;
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+  exams: any[];
+}
 
 interface FlashcardProps {
-  subjects: Subject[];
+  subjects: SubjectWithExams[];
   flashcardProgress: FlashcardProgress[];
   onProgressChange: (progress: FlashcardProgress[]) => void;
 }
 
 const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onProgressChange }) => {
+  const { majorId, subjectId, examId } = useParams();
+  const navigate = useNavigate();
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
-  const [isSelecting, setIsSelecting] = useState(true);
+  const [selectedMajorId, setSelectedMajorId] = useState<string | null>(majorId || null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(subjectId || null);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(examId || null);
+  const [isSelecting, setIsSelecting] = useState(!examId);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // Helper function to get friendly major name
+  const getFriendlyMajorName = (majorId: string) => {
+    const majorMap: { [key: string]: string } = {
+      'IA': 'An toàn Thông tin',
+      'SE': 'Kỹ thuật Phần mềm', 
+      'GD': 'Thiết kế mỹ thuật số',
+      'SC': 'Thiết kế vi mạch bán dẫn',
+      'AI': 'Trí tuệ Nhân tạo',
+      'DM': 'Digital Marketing',
+      'IB': 'Kinh doanh Quốc tế',
+      'LM': 'Logistic & Quản lý chuỗi cung ứng',
+      'HM': 'Quản trị khách sạn',
+      'MU': 'Truyền thông đa phương tiện',
+      'PR': 'Quan hệ công chúng',
+      'LW': 'Luật',
+      'LA': 'Ngôn ngữ'
+    };
+    // Ensure majorId is uppercase and exists in the map
+    const normalizedMajorId = majorId?.toUpperCase() || '';
+    return majorMap[normalizedMajorId] || normalizedMajorId;
+  };
+
+  // Helper function to get major color
+  const getMajorColor = (majorId: string) => {
+    const colorMap: { [key: string]: { bg: string, border: string, text: string } } = {
+      'IA': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+      'SE': { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+      'GD': { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+      'SC': { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
+      'AI': { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700' },
+      'DM': { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700' },
+      'IB': { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' },
+      'LM': { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+      'HM': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700' },
+      'MU': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700' },
+      'PR': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+      'LW': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' },
+      'LA': { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' }
+    };
+    const normalizedMajorId = majorId?.toUpperCase() || '';
+    return colorMap[normalizedMajorId] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' };
+  };
+
   // Track selection state to prevent unnecessary resets
   const selectionRef = useRef({
+    majorId: selectedMajorId,
     subjectId: selectedSubjectId,
     examId: selectedExamId,
     isSelecting: isSelecting
   });
 
+  // Group subjects by major
+  const subjectsByMajor = subjects.reduce((acc, subject) => {
+    if (!acc[subject.majorId]) {
+      acc[subject.majorId] = [];
+    }
+    acc[subject.majorId].push(subject);
+    return acc;
+  }, {} as { [majorId: string]: SubjectWithExams[] });
+
+  const selectedMajor = selectedMajorId ? subjectsByMajor[selectedMajorId]?.[0] : null;
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
 
   // Update ref when selection changes
   useEffect(() => {
     selectionRef.current = {
+      majorId: selectedMajorId,
       subjectId: selectedSubjectId,
       examId: selectedExamId,
       isSelecting: isSelecting
     };
-  }, [selectedSubjectId, selectedExamId, isSelecting]);
+  }, [selectedMajorId, selectedSubjectId, selectedExamId, isSelecting]);
+
+  // Sync URL with state
+  useEffect(() => {
+    if (majorId && majorId !== selectedMajorId) {
+      setSelectedMajorId(majorId);
+    }
+    if (subjectId && subjectId !== selectedSubjectId) {
+      setSelectedSubjectId(subjectId);
+    }
+    if (examId && examId !== selectedExamId) {
+      setSelectedExamId(examId);
+      setIsSelecting(false);
+    }
+  }, [majorId, subjectId, examId]);
 
   useEffect(() => {
     if (selectedExam) {
@@ -180,24 +265,35 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
 
   const handleBackToSelection = () => {
     setIsSelecting(true);
+    setSelectedMajorId(null);
     setSelectedSubjectId(null);
     setSelectedExamId(null);
     setCurrentIndex(0);
     setIsFlipped(false);
+    navigate('/learn');
+  };
+
+  const handleMajorClick = (majorId: string) => {
+    if (selectionRef.current.majorId !== majorId) {
+      setSelectedMajorId(majorId);
+      setSelectedSubjectId(null);
+      setSelectedExamId(null);
+      navigate(`/learn/${majorId}`);
+    }
   };
 
   const handleSubjectClick = (subjectId: string) => {
-    // Stabilize selection - không reset nếu chỉ thay đổi reference
     if (selectionRef.current.subjectId !== subjectId) {
       setSelectedSubjectId(subjectId);
-      setSelectedExamId(null); // Reset exam khi chọn subject mới
+      setSelectedExamId(null);
+      navigate(`/learn/${selectedMajorId}/${subjectId}`);
     }
   };
 
   const handleExamClick = (examId: string) => {
-    // Stabilize selection - không reset nếu chỉ thay đổi reference
     if (selectionRef.current.examId !== examId) {
       setSelectedExamId(examId);
+      navigate(`/learn/${selectedMajorId}/${selectedSubjectId}/${examId}`);
     }
   };
 
@@ -285,99 +381,191 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
   if (isSelecting) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20">
             <div className="p-6 border-b border-gray-200/50">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Chọn môn học và đề thi
-              </h2>
-              <p className="text-gray-600 mt-2 flex items-center">
-                <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
-                Chọn môn học và đề thi để bắt đầu học flashcard
-              </p>
+              {!selectedMajorId ? (
+                <>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Chọn chuyên ngành bạn học
+                  </h2>
+                  <p className="text-gray-600 mt-2 flex items-center">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
+                    Chọn chuyên ngành để bắt đầu học flashcard
+                  </p>
+                </>
+              ) : !selectedSubjectId ? (
+                <>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Chọn môn học
+                  </h2>
+                  <p className="text-gray-600 mt-2 flex items-center">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
+                    Chọn môn học thuộc chuyên ngành {getFriendlyMajorName(selectedMajor?.majorId || '')}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Chọn đề thi
+                  </h2>
+                  <p className="text-gray-600 mt-2 flex items-center">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
+                    Chọn đề thi thuộc môn {selectedSubject?.name}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Chọn môn học */}
+              {!selectedMajorId ? (
+                // Step 1: Chọn chuyên ngành
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                      <BookOpen className="h-5 w-5 text-blue-600" />
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-purple-600 font-bold">🎓</span>
                     </div>
-                    Môn học
+                    Chuyên ngành
                   </h3>
-                  <div className="space-y-3">
-                    {subjects.map((subject) => (
-                      <div
-                        key={subject.id}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
-                          selectedSubjectId === subject.id
-                            ? 'border-blue-500 bg-blue-50/80 shadow-lg'
-                            : 'border-gray-200 hover:border-blue-300 bg-white/60 hover:bg-white/80'
-                        }`}
-                        onClick={() => handleSubjectClick(subject.id)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-bold text-gray-900">{subject.name}</div>
-                            <div className="text-sm text-gray-500">{subject.code}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-gray-400">{subject.exams.length} đề thi</div>
-                            {selectedSubjectId === subject.id && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-1 animate-pulse"></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    {/* All 13 majors */}
+                    {[
+                      'IA', 'SE', 'GD', 'SC', 'AI', 'DM', 'IB', 'LM', 'HM', 'MU', 'PR', 'LW', 'LA'
+                    ].map((majorId) => {
+                      const majorSubjects = subjectsByMajor[majorId] || [];
+                      const friendlyMajorName = getFriendlyMajorName(majorId);
+                      const colors = getMajorColor(majorId);
+                      const totalSubjects = majorSubjects.length;
+                      const totalExams = majorSubjects.reduce((sum, subject) => sum + subject.exams.length, 0);
+                      
+                      return (
+                        <div
+                          key={majorId}
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
+                            selectedMajorId === majorId
+                              ? `${colors.bg} ${colors.border} shadow-lg`
+                              : `${colors.bg} ${colors.border} hover:shadow-md`
+                          }`}
+                          onClick={() => handleMajorClick(majorId)}
+                        >
+                          <div className="text-center">
+                            <div className={`font-bold text-lg mb-2 ${colors.text}`}>{friendlyMajorName}</div>
+                            <div className="text-sm text-gray-500 mb-2">({majorId})</div>
+                            <div className="text-xs text-gray-400 space-y-1">
+                              <div>{totalSubjects} môn học</div>
+                              <div>{totalExams} đề thi</div>
+                            </div>
+                            {selectedMajorId === majorId && (
+                              <div className="w-2 h-2 bg-purple-500 rounded-full mx-auto mt-2 animate-pulse"></div>
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
-
-                {/* Chọn đề thi */}
+              ) : !selectedSubjectId ? (
+                // Step 2: Chọn môn học
                 <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText className="h-5 w-5 text-green-600" />
-                    </div>
-                    Đề thi
-                  </h3>
-                  {selectedSubjectId ? (
-                    <div className="space-y-3">
-                      {selectedSubject!.exams.map((exam) => (
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                        <BookOpen className="h-5 w-5 text-blue-600" />
+                      </div>
+                      Môn học thuộc {getFriendlyMajorName(selectedMajor?.majorId || '')}
+                    </h3>
+                    <button
+                      onClick={() => navigate('/learn')}
+                      className="text-gray-500 hover:text-gray-700 text-sm"
+                    >
+                      ← Quay lại chọn chuyên ngành
+                    </button>
+                  </div>
+                  {subjectsByMajor[selectedMajorId]?.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {subjectsByMajor[selectedMajorId]?.map((subject) => (
                         <div
-                          key={exam.id}
-                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
-                            selectedExamId === exam.id
-                              ? 'border-green-500 bg-green-50/80 shadow-lg'
-                              : 'border-gray-200 hover:border-green-300 bg-white/60 hover:bg-white/80'
+                          key={subject.id}
+                          className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
+                            selectedSubjectId === subject.id
+                              ? 'border-blue-500 bg-blue-50/80 shadow-lg'
+                              : 'border-gray-200 hover:border-blue-300 bg-white/60 hover:bg-white/80'
                           }`}
-                          onClick={() => handleExamClick(exam.id)}
+                          onClick={() => handleSubjectClick(subject.id)}
                         >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-bold text-gray-900">{exam.name}</div>
-                              <div className="text-sm text-gray-500">{exam.code}</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs text-gray-400">{(exam.questions || []).length} câu hỏi</div>
-                              {selectedExamId === exam.id && (
-                                <div className="w-2 h-2 bg-green-500 rounded-full mt-1 animate-pulse"></div>
-                              )}
-                            </div>
+                          <div className="text-center">
+                            <div className="text-2xl mb-2">📚</div>
+                            <div className="font-bold text-gray-900 text-lg mb-2">{subject.name}</div>
+                            <div className="text-sm text-gray-500 mb-3">{subject.code}</div>
+                            <div className="text-xs text-gray-400">{subject.exams.length} đề thi</div>
+                            {selectedSubjectId === subject.id && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto mt-2 animate-pulse"></div>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-300">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p className="font-medium">Vui lòng chọn môn học trước</p>
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <p className="font-medium">Chưa có môn học nào</p>
+                      <p className="text-sm mt-2">Vui lòng thêm môn học cho chuyên ngành này</p>
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                // Step 3: Chọn đề thi
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText className="h-5 w-5 text-green-600" />
+                      </div>
+                      Đề thi thuộc {selectedSubject?.name}
+                    </h3>
+                    <button
+                      onClick={() => navigate(`/learn/${selectedMajorId}`)}
+                      className="text-gray-500 hover:text-gray-700 text-sm"
+                    >
+                      ← Quay lại chọn môn học
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedSubject!.exams.map((exam) => (
+                      <div
+                        key={exam.id}
+                        className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
+                          selectedExamId === exam.id
+                            ? 'border-green-500 bg-green-50/80 shadow-lg'
+                            : 'border-gray-200 hover:border-green-300 bg-white/60 hover:bg-white/80'
+                        }`}
+                        onClick={() => handleExamClick(exam.id)}
+                      >
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">📝</div>
+                          <div className="font-bold text-gray-900 text-lg mb-2">{exam.name}</div>
+                          <div className="text-sm text-gray-500 mb-3">{exam.code}</div>
+                          <div className="flex items-center justify-center space-x-2 mb-3">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              exam.examType === 'PE' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {exam.examType === 'PE' ? 'PE' : 'FE'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {(exam.questions || []).length} câu hỏi
+                            </span>
+                          </div>
+                          {selectedExamId === exam.id && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full mx-auto animate-pulse"></div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -459,7 +647,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
 
           {/* Flashcard */}
           <div className="p-8">
-            <div className="flex items-center justify-center min-h-[450px]">
+            <div className="flex items-center justify-center min-h-[550px]">
               <div className="relative w-full max-w-3xl">
                 {/* Navigation buttons */}
                 <button
@@ -480,7 +668,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
 
                 {/* Card */}
                 <div 
-                  className={`flashcard-3d w-full h-96 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  className={`flashcard-3d w-full h-[500px] cursor-pointer transition-all duration-300 hover:scale-105 ${
                     slideDirection === 'left' ? 'animate-slide-left' : 
                     slideDirection === 'right' ? 'animate-slide-right' : ''
                 }`}
@@ -490,7 +678,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                     isFlipped ? 'rotate-y-180' : ''
                   }`}>
                     {/* Front face */}
-                    <div className="flashcard-face front rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-8 relative border border-gray-200">
+                    <div className="flashcard-face front rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-10 relative border border-gray-200">
                       {/* Bookmark button */}
                       <button
                         onClick={(e) => {
@@ -507,7 +695,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                       </button>
 
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center">
+                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '0.85em' }}>
                           <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blue-600 font-bold">?</span>
                           </span>
@@ -516,7 +704,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         
                         {/* Scrollable question content */}
                         <div className="flex-1 overflow-y-auto pr-3 flashcard-scrollable">
-                          <div className="text-lg leading-relaxed mb-6 whitespace-pre-wrap text-left text-gray-800">
+                          <div className="text-base leading-relaxed mb-6 whitespace-pre-wrap text-left text-gray-800" style={{ fontSize: '0.75em' }}>
                             {currentQuestion.question.split('\n').map((line, index) => {
                               // Detect code blocks (lines that look like code)
                               const isCodeLine = line.trim().startsWith('<') || 
@@ -539,9 +727,9 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                           {/* Options */}
                           <div className="space-y-3 mb-6">
                             {currentQuestion.options.map((option, idx) => (
-                              <div key={idx} className="text-base text-left text-gray-700 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                              <div key={idx} className="text-base text-left text-gray-700 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors" style={{ fontSize: '0.75em', width: '85%' }}>
                                 <span className="font-bold text-blue-600 mr-3">{String.fromCharCode(65 + idx)}.</span> 
-                                {option}
+                                <span className="whitespace-pre-wrap">{option}</span>
                               </div>
                             ))}
                           </div>
@@ -550,7 +738,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         {/* Bottom instruction */}
                         <div className="mt-auto pt-6 border-t border-gray-200">
                           <div className="text-center">
-                            <p className="text-sm text-gray-500 font-medium">Nhấn để xem đáp án</p>
+                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.75em' }}>Nhấn để xem đáp án</p>
                             <div className="flex justify-center mt-2">
                               <div className="w-8 h-1 bg-blue-600 rounded-full"></div>
                             </div>
@@ -560,9 +748,9 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                     </div>
 
                     {/* Back face */}
-                    <div className="flashcard-face back rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-8 relative border border-gray-200">
+                    <div className="flashcard-face back rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-10 relative border border-gray-200">
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center">
+                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '0.85em' }}>
                           <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
                             <span className="text-green-600 font-bold">✓</span>
                           </span>
@@ -571,7 +759,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         
                         {/* Scrollable answer content */}
                         <div className="flex-1 overflow-y-auto pr-3 flashcard-scrollable">
-                          <div className="text-xl font-bold text-green-700 mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                          <div className="text-xl font-bold text-green-700 mb-6 p-4 bg-green-50 rounded-lg border border-green-200" style={{ fontSize: '0.75em', width: '85%' }}>
                             <span className="text-green-600 font-bold">{String.fromCharCode(65 + currentQuestion.correctAnswer)}.</span> 
                             {currentQuestion.options[currentQuestion.correctAnswer]}
                           </div>
@@ -585,9 +773,10 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                                     ? 'bg-green-50 text-green-800 border-green-300' 
                                     : 'bg-gray-50 text-gray-700 border-gray-200'
                                 }`}
+                                style={{ fontSize: '0.75em', width: '85%' }}
                               >
                                 <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span> 
-                                {option}
+                                <span className="whitespace-pre-wrap">{option}</span>
                                 {idx === currentQuestion.correctAnswer && (
                                   <span className="ml-3 text-sm font-bold text-green-600 bg-green-200 px-3 py-1 rounded-full">✓ Đúng</span>
                                 )}
@@ -599,7 +788,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         {/* Bottom instruction */}
                         <div className="mt-auto pt-6 border-t border-gray-200">
                           <div className="text-center">
-                            <p className="text-sm text-gray-500 font-medium">Nhấn để xem câu hỏi</p>
+                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.7em' }}>Nhấn để xem câu hỏi</p>
                             <div className="flex justify-center mt-2">
                               <div className="w-8 h-1 bg-green-600 rounded-full"></div>
                             </div>

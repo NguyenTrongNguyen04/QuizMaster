@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom breakpoint for extra small screens */
+@media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+}
+
 /* Custom styles for 3D card flip effect */
 .backface-hidden {
   backface-visibility: hidden;
@@ -76,6 +83,18 @@
   .flashcard-3d {
     height: 50vh;
     min-height: 250px;
+  }
+}
+
+/* Modal responsive fixes */
+@media (max-width: 480px) {
+  .modal-container {
+    padding: 0.5rem;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    margin: 0;
   }
 }
 
@@ -265,4 +284,36 @@ textarea:focus {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200px 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Form input improvements */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Button improvements */
+button {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Modal improvements */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+}
+
+/* Responsive text sizes */
+@media (max-width: 480px) {
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 481px) {
+  .text-responsive {
+    font-size: 1rem;
+  }
 }

@@ -9,6 +9,7 @@ export interface Exam {
   id: string;
   code: string;        // Mã đề
   name: string;        // Tên đề
+  examType: 'PE' | 'FE'; // Practice Exam or Final Exam
   questions: Question[];
 }
 
@@ -18,7 +19,7 @@ export interface Question {
   options: string[];
   correctAnswer: number;
   examId: string;      // Liên kết với đề
-  category?: string;
+  category?: string;    // Danh mục câu hỏi (tùy chọn)
 }
 
 export interface FlashcardProgress {
