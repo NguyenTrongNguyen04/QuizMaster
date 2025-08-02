@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, CheckCircle, XCircle, Shuffle, BookOpen, FileText, Bookmark, BookmarkCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, RotateCcw, CheckCircle, XCircle, Shuffle, BookOpen, FileText, Bookmark, BookmarkCheck, RefreshCcw } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Question, FlashcardProgress } from '../types';
 
@@ -18,9 +18,11 @@ interface FlashcardProps {
   subjects: SubjectWithExams[];
   flashcardProgress: FlashcardProgress[];
   onProgressChange: (progress: FlashcardProgress[]) => void;
+  onRefreshData?: () => void;
+  majorCodeToIdMap: { [code: string]: string };
 }
 
-const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onProgressChange }) => {
+const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onProgressChange, onRefreshData, majorCodeToIdMap }) => {
   const { majorId, subjectId, examId } = useParams();
   const navigate = useNavigate();
   
@@ -93,6 +95,24 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
     acc[subject.majorId].push(subject);
     return acc;
   }, {} as { [majorId: string]: SubjectWithExams[] });
+
+  // Debug log
+  useEffect(() => {
+    console.log('[Flashcard] Subjects received:', subjects);
+    console.log('[Flashcard] Subjects by major:', subjectsByMajor);
+    console.log('[Flashcard] Major code to ID map:', majorCodeToIdMap);
+    
+    // Log all major IDs that have subjects
+    const majorIdsWithSubjects = Object.keys(subjectsByMajor);
+    console.log('[Flashcard] Major IDs with subjects:', majorIdsWithSubjects);
+    
+    // For each major code, check if we have subjects
+    ['IA', 'SE', 'GD', 'SC', 'AI', 'DM', 'IB', 'LM', 'HM', 'MU', 'PR', 'LW', 'LA'].forEach(code => {
+      const majorId = majorCodeToIdMap[code];
+      const subjectsForMajor = majorId ? subjectsByMajor[majorId] : undefined;
+      console.log(`[Flashcard] ${code} subjects:`, subjectsForMajor);
+    });
+  }, [subjects, subjectsByMajor, majorCodeToIdMap]);
 
   const selectedMajor = selectedMajorId ? subjectsByMajor[selectedMajorId]?.[0] : null;
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
@@ -431,26 +451,27 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                     {/* All 13 majors */}
                     {[
                       'IA', 'SE', 'GD', 'SC', 'AI', 'DM', 'IB', 'LM', 'HM', 'MU', 'PR', 'LW', 'LA'
-                    ].map((majorId) => {
-                      const majorSubjects = subjectsByMajor[majorId] || [];
-                      const friendlyMajorName = getFriendlyMajorName(majorId);
-                      const colors = getMajorColor(majorId);
+                    ].map((majorCode) => {
+                      const majorId = majorCodeToIdMap[majorCode];
+                      const majorSubjects = majorId ? subjectsByMajor[majorId] || [] : [];
+                      const friendlyMajorName = getFriendlyMajorName(majorCode);
+                      const colors = getMajorColor(majorCode);
                       const totalSubjects = majorSubjects.length;
                       const totalExams = majorSubjects.reduce((sum, subject) => sum + subject.exams.length, 0);
                       
                       return (
                         <div
-                          key={majorId}
+                          key={majorCode}
                           className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
                             selectedMajorId === majorId
                               ? `${colors.bg} ${colors.border} shadow-lg`
                               : `${colors.bg} ${colors.border} hover:shadow-md`
                           }`}
-                          onClick={() => handleMajorClick(majorId)}
+                          onClick={() => handleMajorClick(majorId || majorCode)}
                         >
                           <div className="text-center">
                             <div className={`font-bold text-lg mb-2 ${colors.text}`}>{friendlyMajorName}</div>
-                            <div className="text-sm text-gray-500 mb-2">({majorId})</div>
+                            <div className="text-sm text-gray-500 mb-2">({majorCode})</div>
                             <div className="text-xs text-gray-400 space-y-1">
                               <div>{totalSubjects} môn học</div>
                               <div>{totalExams} đề thi</div>
@@ -619,6 +640,15 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                 >
                   <Shuffle className="h-5 w-5" />
                 </button>
+                {onRefreshData && (
+                  <button
+                    onClick={onRefreshData}
+                    className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Làm mới dữ liệu"
+                  >
+                    <RefreshCcw className="h-5 w-5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -646,9 +676,9 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
           </div>
 
           {/* Flashcard */}
-          <div className="p-8">
-            <div className="flex items-center justify-center min-h-[550px]">
-              <div className="relative w-full max-w-3xl">
+          <div className="p-4">
+            <div className="flex items-center justify-center min-h-[600px]">
+              <div className="relative w-full max-w-7xl">
                 {/* Navigation buttons */}
                 <button
                   onClick={handlePrevious}
@@ -668,7 +698,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
 
                 {/* Card */}
                 <div 
-                  className={`flashcard-3d w-full h-[500px] cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  className={`flashcard-3d w-full h-[600px] cursor-pointer transition-all duration-300 hover:scale-105 ${
                     slideDirection === 'left' ? 'animate-slide-left' : 
                     slideDirection === 'right' ? 'animate-slide-right' : ''
                 }`}
@@ -678,7 +708,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                     isFlipped ? 'rotate-y-180' : ''
                   }`}>
                     {/* Front face */}
-                    <div className="flashcard-face front rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-10 relative border border-gray-200">
+                    <div className="flashcard-face front rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-8 relative border border-gray-200">
                       {/* Bookmark button */}
                       <button
                         onClick={(e) => {
@@ -695,7 +725,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                       </button>
 
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '0.85em' }}>
+                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '1.1em' }}>
                           <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                             <span className="text-blue-600 font-bold">?</span>
                           </span>
@@ -704,7 +734,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         
                         {/* Scrollable question content */}
                         <div className="flex-1 overflow-y-auto pr-3 flashcard-scrollable">
-                          <div className="text-base leading-relaxed mb-6 whitespace-pre-wrap text-left text-gray-800" style={{ fontSize: '0.75em' }}>
+                          <div className="text-base leading-relaxed mb-6 whitespace-pre-wrap text-left text-gray-800" style={{ fontSize: '1em' }}>
                             {currentQuestion.question.split('\n').map((line, index) => {
                               // Detect code blocks (lines that look like code)
                               const isCodeLine = line.trim().startsWith('<') || 
@@ -727,7 +757,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                           {/* Options */}
                           <div className="space-y-3 mb-6">
                             {currentQuestion.options.map((option, idx) => (
-                              <div key={idx} className="text-base text-left text-gray-700 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors" style={{ fontSize: '0.75em', width: '85%' }}>
+                              <div key={idx} className="text-base text-left text-gray-700 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors" style={{ fontSize: '1em', width: '100%' }}>
                                 <span className="font-bold text-blue-600 mr-3">{String.fromCharCode(65 + idx)}.</span> 
                                 <span className="whitespace-pre-wrap">{option}</span>
                               </div>
@@ -738,7 +768,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         {/* Bottom instruction */}
                         <div className="mt-auto pt-6 border-t border-gray-200">
                           <div className="text-center">
-                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.75em' }}>Nhấn để xem đáp án</p>
+                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.9em' }}>Nhấn để xem đáp án</p>
                             <div className="flex justify-center mt-2">
                               <div className="w-8 h-1 bg-blue-600 rounded-full"></div>
                             </div>
@@ -748,9 +778,9 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                     </div>
 
                     {/* Back face */}
-                    <div className="flashcard-face back rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-10 relative border border-gray-200">
+                    <div className="flashcard-face back rounded-xl shadow-xl bg-white text-gray-900 flex flex-col p-8 relative border border-gray-200">
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '0.85em' }}>
+                        <h3 className="text-2xl font-bold mb-6 text-gray-900 flex items-center" style={{ fontSize: '1.1em' }}>
                           <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
                             <span className="text-green-600 font-bold">✓</span>
                           </span>
@@ -759,7 +789,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         
                         {/* Scrollable answer content */}
                         <div className="flex-1 overflow-y-auto pr-3 flashcard-scrollable">
-                          <div className="text-xl font-bold text-green-700 mb-6 p-4 bg-green-50 rounded-lg border border-green-200" style={{ fontSize: '0.75em', width: '85%' }}>
+                          <div className="text-xl font-bold text-green-700 mb-6 p-4 bg-green-50 rounded-lg border border-green-200" style={{ fontSize: '1em', width: '100%' }}>
                             <span className="text-green-600 font-bold">{String.fromCharCode(65 + currentQuestion.correctAnswer)}.</span> 
                             {currentQuestion.options[currentQuestion.correctAnswer]}
                           </div>
@@ -773,7 +803,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                                     ? 'bg-green-50 text-green-800 border-green-300' 
                                     : 'bg-gray-50 text-gray-700 border-gray-200'
                                 }`}
-                                style={{ fontSize: '0.75em', width: '85%' }}
+                                style={{ fontSize: '1em', width: '100%' }}
                               >
                                 <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span> 
                                 <span className="whitespace-pre-wrap">{option}</span>
@@ -788,7 +818,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                         {/* Bottom instruction */}
                         <div className="mt-auto pt-6 border-t border-gray-200">
                           <div className="text-center">
-                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.7em' }}>Nhấn để xem câu hỏi</p>
+                            <p className="text-sm text-gray-500 font-medium" style={{ fontSize: '0.9em' }}>Nhấn để xem câu hỏi</p>
                             <div className="flex justify-center mt-2">
                               <div className="w-8 h-1 bg-green-600 rounded-full"></div>
                             </div>

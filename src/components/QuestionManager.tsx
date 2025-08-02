@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Loader2, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { X, Save, Loader2, Plus, Edit, Trash2, Eye, EyeOff, Upload as UploadIcon } from 'lucide-react';
 import { Question, Exam } from '../config/firebase';
+import Upload from './Upload';
 
 interface QuestionManagerProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     console.log('[QuestionManager] Exam changed:', exam);
@@ -113,6 +115,26 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
     }
   };
 
+  const handleUploadQuestions = (uploadedQuestions: Question[]) => {
+    // Set examId for uploaded questions
+    const questionsWithExamId = uploadedQuestions.map(q => ({
+      ...q,
+      examId: exam?.id || ''
+    }));
+    
+    // Add uploaded questions to existing questions
+    const updatedQuestions = [...questions, ...questionsWithExamId];
+    setQuestions(updatedQuestions);
+    
+    // Save to exam
+    if (exam) {
+      const updatedExam = { ...exam, questions: updatedQuestions };
+      onSave(updatedExam);
+    }
+    
+    setShowUploadModal(false);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -162,6 +184,13 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
                     className="bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm"
                   >
                     🔄 Refresh
+                  </button>
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    <UploadIcon className="h-4 w-4 mr-2" />
+                    Upload
                   </button>
                   <button
                     onClick={handleAddQuestion}
@@ -272,6 +301,14 @@ const QuestionManager: React.FC<QuestionManagerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <Upload
+          onQuestionsUploaded={handleUploadQuestions}
+          onClose={() => setShowUploadModal(false)}
+        />
+      )}
     </div>
   );
 };
@@ -327,6 +364,28 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ question, onSave, onCancel 
     setFormData(prev => ({ ...prev, options: newOptions }));
   };
 
+  const addOption = () => {
+    const newOptions = [...(formData.options || ['', '', '', '']), ''];
+    setFormData(prev => ({ ...prev, options: newOptions }));
+  };
+
+  const removeOption = (index: number) => {
+    const currentOptions = formData.options || ['', '', '', ''];
+    if (currentOptions.length <= 2) {
+      alert('Phải có ít nhất 2 lựa chọn');
+      return;
+    }
+    
+    const newOptions = currentOptions.filter((_, i) => i !== index);
+    setFormData(prev => ({ 
+      ...prev, 
+      options: newOptions,
+      correctAnswer: Math.min(prev.correctAnswer || 0, newOptions.length - 1)
+    }));
+  };
+
+  const currentOptions = formData.options || ['', '', '', ''];
+
   return (
     <div className="p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -349,11 +408,21 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ question, onSave, onCancel 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Các lựa chọn *
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Các lựa chọn *
+            </label>
+            <button
+              type="button"
+              onClick={addOption}
+              className="text-sm bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+            >
+              <span>+</span>
+              <span>Thêm đáp án</span>
+            </button>
+          </div>
           <div className="space-y-2">
-            {[0, 1, 2, 3].map((index) => (
+            {currentOptions.map((option, index) => (
               <div key={index} className="flex items-center space-x-3">
                 <input
                   type="radio"
@@ -365,12 +434,24 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ question, onSave, onCancel 
                 />
                 <input
                   type="text"
-                  value={formData.options?.[index] || ''}
+                  value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
                   required
                 />
+                {currentOptions.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(index)}
+                    className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Xóa lựa chọn này"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             ))}
           </div>

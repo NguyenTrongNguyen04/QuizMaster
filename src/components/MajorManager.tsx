@@ -65,8 +65,10 @@ const MajorManager: React.FC<MajorManagerProps> = ({ userRole }) => {
   useEffect(() => {
     if (selectedMajor) {
       const loadSubjects = async () => {
+        console.log('[MajorManager] Loading subjects for major:', selectedMajor);
         try {
           const subjectsData = await loadSubjectsByMajor(selectedMajor);
+          console.log('[MajorManager] Loaded subjects:', subjectsData);
           setSubjects(prev => ({ ...prev, [selectedMajor]: subjectsData as Subject[] }));
         } catch (error) {
           console.error('Error loading subjects:', error);
@@ -225,9 +227,11 @@ const MajorManager: React.FC<MajorManagerProps> = ({ userRole }) => {
       
       if (success) {
         console.log('[MajorManager] Exam saved successfully');
+        console.log('[MajorManager] Reloading exams for subject:', exam.subjectId);
         const examsData = await loadExamsBySubject(exam.subjectId);
         console.log('[MajorManager] Reloaded exams:', examsData);
         setExams(prev => ({ ...prev, [exam.subjectId]: examsData as Exam[] }));
+        console.log('[MajorManager] Closing exam form and resetting editingExam');
         setShowExamForm(false);
         setEditingExam(null);
         alert('Đề thi đã được lưu thành công!');

@@ -70,7 +70,8 @@ const MainAppWithNav: React.FC = () => {
     majors: publicMajors,
     subjects: publicSubjects,
     isLoading: subjectsLoading,
-    refreshData: refreshPublicData
+    refreshData: refreshPublicData,
+    majorCodeToIdMap
   } = usePublicContent();
 
   // Show toast function
@@ -255,6 +256,8 @@ const MainAppWithNav: React.FC = () => {
               subjects={publicSubjects || []}
               flashcardProgress={flashcardProgress}
               onProgressChange={handleFlashcardProgressChange}
+              onRefreshData={refreshPublicData}
+              majorCodeToIdMap={majorCodeToIdMap}
             />
           } />
           <Route path="/learn/:majorId" element={
@@ -262,6 +265,8 @@ const MainAppWithNav: React.FC = () => {
               subjects={publicSubjects || []}
               flashcardProgress={flashcardProgress}
               onProgressChange={handleFlashcardProgressChange}
+              onRefreshData={refreshPublicData}
+              majorCodeToIdMap={majorCodeToIdMap}
             />
           } />
           <Route path="/learn/:majorId/:subjectId" element={
@@ -269,6 +274,8 @@ const MainAppWithNav: React.FC = () => {
               subjects={publicSubjects || []}
               flashcardProgress={flashcardProgress}
               onProgressChange={handleFlashcardProgressChange}
+              onRefreshData={refreshPublicData}
+              majorCodeToIdMap={majorCodeToIdMap}
             />
           } />
           <Route path="/learn/:majorId/:subjectId/:examId" element={
@@ -276,6 +283,8 @@ const MainAppWithNav: React.FC = () => {
               subjects={publicSubjects || []}
               flashcardProgress={flashcardProgress}
               onProgressChange={handleFlashcardProgressChange}
+              onRefreshData={refreshPublicData}
+              majorCodeToIdMap={majorCodeToIdMap}
             />
           } />
           

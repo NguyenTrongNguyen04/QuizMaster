@@ -33,10 +33,14 @@ const ExamForm: React.FC<ExamFormProps> = ({
   const [currentExam, setCurrentExam] = useState<Exam | null>(null);
 
   useEffect(() => {
+    console.log('[ExamForm] useEffect triggered with:', { exam, subjectsLength: subjects.length });
+    
     if (exam) {
+      console.log('[ExamForm] Setting form data from exam:', exam);
       setFormData(exam);
       setCurrentExam(exam);
     } else {
+      console.log('[ExamForm] Resetting form data for new exam');
       setFormData({
         id: '',
         subjectId: subjects.length > 0 ? subjects[0].id : '',
@@ -48,10 +52,12 @@ const ExamForm: React.FC<ExamFormProps> = ({
       });
       setCurrentExam(null);
     }
-  }, [exam, subjects]);
+  }, [exam]); // Remove subjects from dependency array to prevent form reset
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('[ExamForm] Form submitted with data:', formData);
     
     if (!formData.name || !formData.description || !formData.subjectId) {
       alert('Vui lòng điền đầy đủ thông tin');
@@ -71,6 +77,7 @@ const ExamForm: React.FC<ExamFormProps> = ({
       examType: formData.examType || 'PE'
     };
 
+    console.log('[ExamForm] Submitting exam data:', examData);
     onSave(examData);
     setCurrentExam(examData);
   };
@@ -86,6 +93,14 @@ const ExamForm: React.FC<ExamFormProps> = ({
     onSave(updatedExam);
     setCurrentExam(updatedExam);
   };
+
+  // Add effect to update subjectId when subjects change (only for new exams)
+  useEffect(() => {
+    if (!exam && subjects.length > 0 && !formData.subjectId) {
+      console.log('[ExamForm] Updating subjectId for new exam:', subjects[0].id);
+      setFormData(prev => ({ ...prev, subjectId: subjects[0].id }));
+    }
+  }, [subjects, exam, formData.subjectId]);
 
   if (!isOpen) return null;
 
@@ -113,7 +128,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
               <select
                 id="subjectId"
                 value={formData.subjectId || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, subjectId: e.target.value }))}
+                onChange={(e) => {
+                  console.log('[ExamForm] Subject changed to:', e.target.value);
+                  setFormData(prev => ({ ...prev, subjectId: e.target.value }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
@@ -134,7 +152,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
                 type="text"
                 id="name"
                 value={formData.name || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => {
+                  console.log('[ExamForm] Name changed to:', e.target.value);
+                  setFormData(prev => ({ ...prev, name: e.target.value }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Ví dụ: Midterm Exam - OOP"
                 required
@@ -148,7 +169,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
               <textarea
                 id="description"
                 value={formData.description || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => {
+                  console.log('[ExamForm] Description changed to:', e.target.value);
+                  setFormData(prev => ({ ...prev, description: e.target.value }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={3}
                 placeholder="Mô tả chi tiết về đề thi"
@@ -163,7 +187,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
               <select
                 id="examType"
                 value={formData.examType || 'PE'}
-                onChange={(e) => setFormData(prev => ({ ...prev, examType: e.target.value as 'PE' | 'FE' }))}
+                onChange={(e) => {
+                  console.log('[ExamForm] Exam type changed to:', e.target.value);
+                  setFormData(prev => ({ ...prev, examType: e.target.value as 'PE' | 'FE' }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
@@ -181,7 +208,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
                   type="number"
                   id="timeLimit"
                   value={formData.timeLimit || 60}
-                  onChange={(e) => setFormData(prev => ({ ...prev, timeLimit: parseInt(e.target.value) || 60 }))}
+                  onChange={(e) => {
+                    console.log('[ExamForm] Time limit changed to:', e.target.value);
+                    setFormData(prev => ({ ...prev, timeLimit: parseInt(e.target.value) || 60 }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="1"
                   max="300"
@@ -196,7 +226,10 @@ const ExamForm: React.FC<ExamFormProps> = ({
                   type="number"
                   id="totalQuestions"
                   value={formData.totalQuestions || 20}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalQuestions: parseInt(e.target.value) || 20 }))}
+                  onChange={(e) => {
+                    console.log('[ExamForm] Total questions changed to:', e.target.value);
+                    setFormData(prev => ({ ...prev, totalQuestions: parseInt(e.target.value) || 20 }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="1"
                   max="100"
