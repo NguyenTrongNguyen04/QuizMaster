@@ -316,6 +316,7 @@ button {
   .text-responsive {
     font-size: 1rem;
   }
+<<<<<<< HEAD
 }
 
 @keyframes blob {
@@ -346,4 +347,6 @@ button {
 
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
+=======
+>>>>>>> 368962d96bd01916fafd4bbd2eed433117fabf62
 }

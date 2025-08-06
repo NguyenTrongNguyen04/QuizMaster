@@ -12,9 +12,14 @@ export const useUserPlan = ({ user }: UseUserPlanProps) => {
 
   useEffect(() => {
     if (user) {
-      // Mock logic - in real app, this would fetch from database
-      const plan = user.email?.includes('pro') ? 'pro' : 'basic';
-      setUserPlan(plan);
+      // Nếu là admin thì luôn là pro
+      const isAdmin = user.email?.includes('admin') || user.email?.includes('fpt.edu.vn');
+      if (isAdmin) {
+        setUserPlan('pro');
+      } else {
+        const plan = user.email?.includes('pro') ? 'pro' : 'basic';
+        setUserPlan(plan);
+      }
     } else {
       setUserPlan(null);
     }
@@ -67,7 +72,7 @@ export const useUserPlan = ({ user }: UseUserPlanProps) => {
 
   const getPlanDisplay = useCallback((): string => {
     if (userPlan === 'pro') return 'Pro';
-    if (userPlan === 'basic') return 'Basic';
+    if (userPlan === 'basic') return 'Standard';
     return 'Khách';
   }, [userPlan]);
 
