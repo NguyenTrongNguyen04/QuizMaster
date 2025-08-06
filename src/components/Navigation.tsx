@@ -72,9 +72,6 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
                 >
                   <Icon className={`h-4 w-4 transition-transform duration-300 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'}`} />
                   <span>{item.label}</span>
-                  {isActive && (
-                    <div className="w-1 h-1 bg-[#e77a15] rounded-full animate-pulse"></div>
-                  )}
                 </button>
               );
             })}
@@ -106,9 +103,6 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange, user
                 >
                   <Icon className={`h-3 w-3 transition-transform duration-300 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'}`} />
                   <span>{item.label}</span>
-                  {isActive && (
-                    <div className="w-1 h-1 bg-[#e77a15] rounded-full animate-pulse"></div>
-                  )}
                 </button>
               );
             })}

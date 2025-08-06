@@ -114,9 +114,37 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
     return acc;
   }, {} as { [key: string]: SubjectWithExams[] });
 
-  // Get selected subject and exam
-  const selectedSubject = filteredSubjects.find(s => s.id === selectedSubjectId);
+  // Debug log
+  useEffect(() => {
+    console.log('[Flashcard] Subjects received:', subjects);
+    console.log('[Flashcard] Subjects by major:', subjectsByMajor);
+    console.log('[Flashcard] Major code to ID map:', majorCodeToIdMap);
+    
+    // Log all major IDs that have subjects
+    const majorIdsWithSubjects = Object.keys(subjectsByMajor);
+    console.log('[Flashcard] Major IDs with subjects:', majorIdsWithSubjects);
+    
+    // For each major code, check if we have subjects
+    ['IA', 'SE', 'GD', 'SC', 'AI', 'DM', 'IB', 'LM', 'HM', 'MU', 'PR', 'LW', 'LA'].forEach(code => {
+      const majorId = majorCodeToIdMap[code];
+      const subjectsForMajor = majorId ? subjectsByMajor[majorId] : undefined;
+      console.log(`[Flashcard] ${code} subjects:`, subjectsForMajor);
+    });
+  }, [subjects, subjectsByMajor, majorCodeToIdMap]);
+
+  const selectedMajor = selectedMajorId ? subjectsByMajor[selectedMajorId]?.[0] : null;
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const selectedExam = selectedSubject?.exams.find(e => e.id === selectedExamId);
+
+  // Update ref when selection changes
+  useEffect(() => {
+    selectionRef.current = {
+      majorId: selectedMajorId,
+      subjectId: selectedSubjectId,
+      examId: selectedExamId,
+      isSelecting: isSelecting
+    };
+  }, [selectedMajorId, selectedSubjectId, selectedExamId, isSelecting]);
 
   // Sync URL with state
   useEffect(() => {
@@ -153,24 +181,71 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
       setShuffledQuestions(questions);
       setCurrentIndex(0);
       setIsFlipped(false);
-      setIsSelecting(false);
     }
   }, [selectedExam]);
 
-  // Calculate stats
-  const currentQuestion = shuffledQuestions[currentIndex];
-  const currentProgress = flashcardProgress.find(p => p.questionId === currentQuestion?.id);
-  const totalQuestions = shuffledQuestions.length;
-  const reviewedQuestions = flashcardProgress.length;
-  const knownQuestions = flashcardProgress.filter(p => p.known).length;
-  const bookmarkedQuestions = flashcardProgress.filter(p => p.bookmarked).length;
+  // Preserve selection if still valid when subjects change
+  useEffect(() => {
+    // Nếu đang loading subjects hoặc subjects tạm thời rỗng, không reset selection
+    if (!subjects || subjects.length === 0) {
+      return;
+    }
+    
+    // Debounce để tránh reset quá nhanh
+    const timeoutId = setTimeout(() => {
+      // Chỉ reset nếu đã có selection trước đó và subject đó không còn tồn tại
+      if (selectedSubjectId) {
+        const subject = subjects.find(s => s.id === selectedSubjectId);
+        
+        if (!subject) {
+          // Subject đã chọn không còn tồn tại, reset selection
+          setSelectedSubjectId(null);
+          setSelectedExamId(null);
+          setIsSelecting(true);
+          return;
+        }
+        
+        // Nếu đã chọn exam và exam đó không còn tồn tại
+        if (selectedExamId) {
+          const exam = subject.exams.find(e => e.id === selectedExamId);
+          
+          if (!exam) {
+            setSelectedExamId(null);
+            setIsSelecting(true);
+          }
+        }
+      }
+    }, 100); // Debounce 100ms
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [subjects, selectedSubjectId, selectedExamId]);
+
+  // Stabilize selection state - không reset nếu subjects chỉ thay đổi reference
+  useEffect(() => {
+    if (subjects && subjects.length > 0 && selectedSubjectId) {
+      const subject = subjects.find(s => s.id === selectedSubjectId);
+      if (subject && selectedExamId) {
+        const exam = subject.exams.find(e => e.id === selectedExamId);
+        if (exam) {
+          // Selection vẫn hợp lệ, không cần reset
+          return;
+        }
+      }
+    }
+  }, [subjects, selectedSubjectId, selectedExamId]);
 
   const shuffleQuestions = () => {
-    const shuffled = [...shuffledQuestions].sort(() => Math.random() - 0.5);
+    if (!selectedExam) return;
+    const shuffled = [...selectedExam.questions].sort(() => Math.random() - 0.5);
     setShuffledQuestions(shuffled);
     setCurrentIndex(0);
     setIsFlipped(false);
   };
+
+  const currentQuestion = shuffledQuestions[currentIndex];
+  const currentProgress = flashcardProgress.find(p => p.questionId === currentQuestion?.id);
 
   const animateCardTransition = (direction: 'left' | 'right', callback: () => void) => {
     setSlideDirection(direction);
@@ -202,39 +277,40 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
   };
 
   const handleKnownStatus = (known: boolean) => {
-    const currentQuestion = shuffledQuestions[currentIndex];
     if (!currentQuestion) return;
 
-    const existingProgress = flashcardProgress.find(p => p.questionId === currentQuestion.id);
-    const updatedProgress = existingProgress 
-      ? { ...existingProgress, known, reviewCount: existingProgress.reviewCount + 1, lastReviewed: new Date() }
-      : { questionId: currentQuestion.id, known, reviewCount: 1, lastReviewed: new Date() };
-
-    const newProgress = existingProgress
-      ? flashcardProgress.map(p => p.questionId === currentQuestion.id ? updatedProgress : p)
-      : [...flashcardProgress, updatedProgress];
-
+    const newProgress = flashcardProgress.filter(p => p.questionId !== currentQuestion.id);
+    newProgress.push({
+      questionId: currentQuestion.id,
+      known,
+      reviewCount: (currentProgress?.reviewCount || 0) + 1,
+      lastReviewed: new Date(),
+    });
+    
     onProgressChange(newProgress);
     
-    // Check if user needs to login to continue
-    if (needsLoginToContinue(currentIndex + 1)) {
-      setShowLoginPrompt(true);
-    }
+    // Auto advance to next card
+    setTimeout(() => {
+      if (currentIndex < shuffledQuestions.length - 1) {
+        handleNext();
+      }
+    }, 500);
   };
 
   const toggleBookmark = () => {
-    const currentQuestion = shuffledQuestions[currentIndex];
     if (!currentQuestion) return;
 
-    const existingProgress = flashcardProgress.find(p => p.questionId === currentQuestion.id);
-    const updatedProgress = existingProgress 
-      ? { ...existingProgress, bookmarked: !existingProgress.bookmarked }
-      : { questionId: currentQuestion.id, known: false, reviewCount: 0, lastReviewed: new Date(), bookmarked: true };
-
-    const newProgress = existingProgress
-      ? flashcardProgress.map(p => p.questionId === currentQuestion.id ? updatedProgress : p)
-      : [...flashcardProgress, updatedProgress];
-
+    const newProgress = flashcardProgress.filter(p => p.questionId !== currentQuestion.id);
+    const isBookmarked = currentProgress?.bookmarked || false;
+    
+    newProgress.push({
+      questionId: currentQuestion.id,
+      known: currentProgress?.known || false,
+      reviewCount: currentProgress?.reviewCount || 0,
+      lastReviewed: currentProgress?.lastReviewed || new Date(),
+      bookmarked: !isBookmarked,
+    });
+    
     onProgressChange(newProgress);
   };
 
@@ -243,26 +319,119 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
   };
 
   const handleBackToSelection = () => {
+    setIsSelecting(true);
     setSelectedMajorId(null);
     setSelectedSubjectId(null);
     setSelectedExamId(null);
-    setIsSelecting(true);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    navigate('/learn');
   };
 
   const handleMajorClick = (majorId: string) => {
-    setSelectedMajorId(majorId);
-    setSelectedSubjectId(null);
-    setSelectedExamId(null);
+    if (selectionRef.current.majorId !== majorId) {
+      setSelectedMajorId(majorId);
+      setSelectedSubjectId(null);
+      setSelectedExamId(null);
+      navigate(`/learn/${majorId}`);
+    }
   };
 
   const handleSubjectClick = (subjectId: string) => {
-    setSelectedSubjectId(subjectId);
-    setSelectedExamId(null);
+    if (selectionRef.current.subjectId !== subjectId) {
+      setSelectedSubjectId(subjectId);
+      setSelectedExamId(null);
+      navigate(`/learn/${selectedMajorId}/${subjectId}`);
+    }
   };
 
   const handleExamClick = (examId: string) => {
-    setSelectedExamId(examId);
+    if (selectionRef.current.examId !== examId) {
+      setSelectedExamId(examId);
+      navigate(`/learn/${selectedMajorId}/${selectedSubjectId}/${examId}`);
+    }
   };
+
+  // Calculate stats
+  const totalQuestions = shuffledQuestions.length;
+  const reviewedQuestions = flashcardProgress.length;
+  const knownQuestions = flashcardProgress.filter(p => p.known).length;
+  const bookmarkedQuestions = flashcardProgress.filter(p => p.bookmarked).length;
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (isSelecting) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          handlePrevious();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          handleNext();
+          break;
+        case ' ':
+        case 'Enter':
+          event.preventDefault();
+          setIsFlipped(!isFlipped);
+          break;
+        case 'k':
+        case 'K':
+          event.preventDefault();
+          if (isFlipped) {
+            handleKnownStatus(true);
+          }
+          break;
+        case 'n':
+        case 'N':
+          event.preventDefault();
+          if (isFlipped) {
+            handleKnownStatus(false);
+          }
+          break;
+        case 'b':
+        case 'B':
+          event.preventDefault();
+          toggleBookmark();
+          break;
+        case 's':
+        case 'S':
+          event.preventDefault();
+          shuffleQuestions();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isSelecting, isFlipped, currentIndex, shuffledQuestions.length]);
+
+  // Auto-advance timer
+  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isFlipped && currentIndex < shuffledQuestions.length - 1) {
+      const timer = setTimeout(() => {
+        handleNext();
+      }, 10000); // Auto-advance after 10 seconds
+      
+      setAutoAdvanceTimer(timer);
+      
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
+  }, [isFlipped, currentIndex]);
+
+  // Clear timer when manually navigating
+  useEffect(() => {
+    if (autoAdvanceTimer) {
+      clearTimeout(autoAdvanceTimer);
+      setAutoAdvanceTimer(null);
+    }
+  }, [currentIndex, isFlipped]);
 
   // Login Prompt Component
   const renderLoginPrompt = () => {
@@ -326,185 +495,6 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
     );
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (isSelecting) return;
-      
-      switch (event.key) {
-        case 'ArrowLeft':
-          handlePrevious();
-          break;
-        case 'ArrowRight':
-          handleNext();
-          break;
-        case ' ':
-          event.preventDefault();
-          setIsFlipped(!isFlipped);
-          break;
-        case '1':
-          handleKnownStatus(true);
-          break;
-        case '2':
-          handleKnownStatus(false);
-          break;
-        case 'b':
-          toggleBookmark();
-          break;
-        case 's':
-          shuffleQuestions();
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentIndex, isFlipped, isSelecting, shuffledQuestions, flashcardProgress]);
-
-  const renderExamSelection = () => {
-    return (
-      <div className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-        <div className="bg-white rounded-xl shadow-lg">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Chọn chuyên ngành để học tập
-            </h2>
-            <p className="text-gray-600 mt-2 flex items-center">
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
-              Chọn chuyên ngành để bắt đầu học tập với flashcards
-            </p>
-          </div>
-
-          {/* Major Selection */}
-          {!selectedMajorId ? (
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(subjectsByMajor).map(([majorId, subjects], index) => {
-                  const color = getMajorColor(majorId);
-                  return (
-                    <div
-                      key={majorId}
-                      className={`${color.bg} ${color.border} border-2 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105 animate-fade-in`}
-                      style={{ animationDelay: `${index * 100}ms` }}
-                      onClick={() => handleMajorClick(majorId)}
-                    >
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className={`w-12 h-12 rounded-xl ${color.bg} flex items-center justify-center`}>
-                          <BookOpen className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className={`text-xl font-bold ${color.text}`}>
-                            {getFriendlyMajorName(majorId)}
-                          </h3>
-                          <p className="text-sm text-gray-600">{subjects.length} môn học</p>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-sm">
-                        Môn học thuộc {getFriendlyMajorName(majorId)}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="p-6">
-              {/* Subject Selection */}
-              {!selectedSubjectId ? (
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <button
-                      onClick={() => setSelectedMajorId(null)}
-                      className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-300"
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Quay lại chọn chuyên ngành
-                    </button>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                      <BookOpen className="h-5 w-5 text-green-600" />
-                    </div>
-                    Môn học thuộc {getFriendlyMajorName(selectedMajorId)}
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {subjectsByMajor[selectedMajorId]?.map((subject, index) => (
-                      <div
-                        key={subject.id}
-                        className="bg-white border border-gray-200 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105 animate-fade-in"
-                        style={{ animationDelay: `${index * 100}ms` }}
-                        onClick={() => handleSubjectClick(subject.id)}
-                      >
-                        <h4 className="text-lg font-bold text-gray-900 mb-2">{subject.name}</h4>
-                        <p className="text-gray-600 text-sm mb-4">{subject.description}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-500">{subject.code}</span>
-                          <span className="text-sm font-semibold text-blue-600">
-                            {subject.exams.length} đề thi
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* Exam Selection */}
-                  <div className="flex items-center justify-between mb-6">
-                    <button
-                      onClick={() => setSelectedSubjectId(null)}
-                      className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-300"
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Quay lại chọn môn học
-                    </button>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    Môn học thuộc {getFriendlyMajorName(selectedMajorId)}
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {selectedSubject?.exams.map((exam, index) => (
-                      <div
-                        key={exam.id}
-                        className={`bg-white border-2 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105 animate-fade-in ${
-                          selectedExamId === exam.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                        }`}
-                        style={{ animationDelay: `${index * 100}ms` }}
-                        onClick={() => handleExamClick(exam.id)}
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-bold text-gray-900">{exam.name}</h4>
-                          {exam.examType === 'QUIZLET' && (
-                            <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
-                              Quizlet
-                            </span>
-                          )}
-                        </div>
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2" />
-                            {exam.questions?.length || 0} câu hỏi
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   if (isSelecting) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -528,7 +518,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                   </h2>
                   <p className="text-gray-600 mt-2 flex items-center">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
-                    Chọn môn học thuộc chuyên ngành {getFriendlyMajorName(selectedMajorId || '')}
+                    Chọn môn học thuộc chuyên ngành {getFriendlyMajorName(selectedMajor?.majorId || '')}
                   </p>
                 </>
               ) : (
@@ -600,7 +590,7 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                         <BookOpen className="h-5 w-5 text-blue-600" />
                       </div>
-                      Môn học thuộc {getFriendlyMajorName(selectedMajorId || '')}
+                      Môn học thuộc {getFriendlyMajorName(selectedMajor?.majorId || '')}
                     </h3>
                     <button
                       onClick={() => navigate('/learn')}
@@ -643,7 +633,56 @@ const Flashcard: React.FC<FlashcardProps> = ({ subjects, flashcardProgress, onPr
                 </div>
               ) : (
                 // Step 3: Chọn đề thi
-                renderExamSelection()
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                        <FileText className="h-5 w-5 text-green-600" />
+                      </div>
+                      Đề thi thuộc {selectedSubject?.name}
+                    </h3>
+                    <button
+                      onClick={() => navigate(`/learn/${selectedMajorId}`)}
+                      className="text-gray-500 hover:text-gray-700 text-sm"
+                    >
+                      ← Quay lại chọn môn học
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedSubject!.exams.map((exam) => (
+                      <div
+                        key={exam.id}
+                        className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover-lift ${
+                          selectedExamId === exam.id
+                            ? 'border-green-500 bg-green-50/80 shadow-lg'
+                            : 'border-gray-200 hover:border-green-300 bg-white/60 hover:bg-white/80'
+                        }`}
+                        onClick={() => handleExamClick(exam.id)}
+                      >
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">📝</div>
+                          <div className="font-bold text-gray-900 text-lg mb-2">{exam.name}</div>
+                          <div className="text-sm text-gray-500 mb-3">{exam.code}</div>
+                          <div className="flex items-center justify-center space-x-2 mb-3">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              exam.examType === 'PE' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {exam.examType === 'PE' ? 'PE' : 'FE'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {(exam.questions || []).length} câu hỏi
+                            </span>
+                          </div>
+                          {selectedExamId === exam.id && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full mx-auto animate-pulse"></div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
